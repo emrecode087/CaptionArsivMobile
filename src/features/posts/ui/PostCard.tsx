@@ -1,8 +1,10 @@
 import { memo, useState } from 'react';
-import { StyleSheet, View, Text, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Linking } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { Ionicons } from '@expo/vector-icons';
 
 import type { Post } from '../domain/types';
+import { colors, spacing } from '@/core/theme/tokens';
 
 interface PostCardProps {
   post: Post;
@@ -10,15 +12,17 @@ interface PostCardProps {
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_PADDING = 16;
-const EMBED_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2;
 
 export const PostCard = memo(({ post }: PostCardProps) => {
   const [webViewHeight, setWebViewHeight] = useState(400);
+  const [isLiked, setIsLiked] = useState(false); // TODO: Gerçek veri ile bağlanacak
 
   const injectedJavaScript = `
     (function() {
       function sendHeight() {
-        const height = document.documentElement.scrollHeight;
+        // Get the height of the twitter-tweet element if it exists, otherwise body
+        const tweet = document.querySelector('.twitter-tweet');
+        const height = tweet ? tweet.getBoundingClientRect().height : document.documentElement.scrollHeight;
         window.ReactNativeWebView.postMessage(JSON.stringify({ height }));
       }
 
@@ -56,13 +60,23 @@ export const PostCard = memo(({ post }: PostCardProps) => {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: transparent;
             overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100px;
           }
           .container {
-            max-width: 100%;
-            padding: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
           }
           blockquote {
             margin: 0 auto !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
           }
         </style>
       </head>
@@ -78,8 +92,8 @@ export const PostCard = memo(({ post }: PostCardProps) => {
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.height && data.height > 100) {
-        setWebViewHeight(Math.min(data.height + 20, 800));
+      if (data.height && data.height > 50) {
+        setWebViewHeight(data.height);
       }
     } catch (error) {
       console.warn('Failed to parse WebView message', error);
@@ -89,8 +103,18 @@ export const PostCard = memo(({ post }: PostCardProps) => {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.username}>@{post.userName}</Text>
-        <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString('tr-TR')}</Text>
+        <View style={styles.userInfo}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{post.userName.charAt(0).toUpperCase()}</Text>
+          </View>
+          <View>
+            <Text style={styles.username}>@{post.userName}</Text>
+            <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString('tr-TR')}</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.moreButton}>
+          <Ionicons name="ellipsis-horizontal" size={20} color={colors.text.tertiary} />
+        </TouchableOpacity>
       </View>
 
       {post.caption ? <Text style={styles.caption}>{post.caption}</Text> : null}
@@ -98,7 +122,7 @@ export const PostCard = memo(({ post }: PostCardProps) => {
       {post.embedHtml && (
         <View style={[styles.embedContainer, { height: webViewHeight }]}>
           <WebView
-            source={{ html: htmlContent }}
+            source={{ html: htmlContent, baseUrl: 'https://twitter.com' }}
             style={styles.webview}
             scrollEnabled={false}
             showsVerticalScrollIndicator={false}
@@ -110,6 +134,28 @@ export const PostCard = memo(({ post }: PostCardProps) => {
             startInLoadingState
             scalesPageToFit={false}
             bounces={false}
+            allowsInlineMediaPlayback={true}
+            mediaPlaybackRequiresUserAction={false}
+            originWhitelist={['*']}
+            mixedContentMode="always"
+            androidLayerType="hardware"
+            onShouldStartLoadWithRequest={(request) => {
+              const { url } = request;
+              
+              // Allow standard web content to load
+              if (url.startsWith('http') || url.startsWith('https') || url.startsWith('about:blank')) {
+                // If it's a user click (e.g. "Watch on X"), open in system browser
+                if (request.navigationType === 'click') {
+                  Linking.openURL(url).catch(() => {});
+                  return false;
+                }
+                return true;
+              }
+
+              // Handle custom schemes (e.g. twitter://) by opening in system handler
+              Linking.openURL(url).catch(() => {});
+              return false;
+            }}
           />
         </View>
       )}
@@ -125,9 +171,30 @@ export const PostCard = memo(({ post }: PostCardProps) => {
       ) : null}
 
       <View style={styles.footer}>
-        <Text style={styles.stats}>
-          ❤️ {post.likeCount} · 💬 {post.commentCount}
-        </Text>
+        <View style={styles.actions}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => setIsLiked(!isLiked)}
+          >
+            <Ionicons 
+              name={isLiked ? "heart" : "heart-outline"} 
+              size={24} 
+              color={isLiked ? colors.error : colors.text.secondary} 
+            />
+            <Text style={[styles.actionText, isLiked && styles.likedText]}>
+              {post.likeCount + (isLiked ? 1 : 0)}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="chatbubble-outline" size={22} color={colors.text.secondary} />
+            <Text style={styles.actionText}>{post.commentCount}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.actionButton}>
+          <Ionicons name="flag-outline" size={20} color={colors.text.tertiary} />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -143,15 +210,35 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: colors.primaryDark,
+    fontWeight: '700',
+    fontSize: 16,
   },
   username: {
     fontSize: 15,
@@ -159,19 +246,23 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   date: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 12,
+    color: '#888',
+  },
+  moreButton: {
+    padding: 4,
   },
   caption: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#333',
-    lineHeight: 20,
+    lineHeight: 22,
     marginBottom: 12,
   },
   embedContainer: {
-    width: EMBED_WIDTH,
+    width: '100%',
     overflow: 'hidden',
     backgroundColor: 'transparent',
+    borderRadius: 12,
   },
   webview: {
     backgroundColor: 'transparent',
@@ -183,24 +274,40 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   tag: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#F0F2F5',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   tagText: {
     fontSize: 12,
-    color: '#555',
+    color: '#666',
     fontWeight: '500',
   },
   footer: {
-    marginTop: 12,
+    marginTop: 8,
     paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e0e0e0',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F2F5',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  stats: {
-    fontSize: 13,
-    color: '#666',
+  actions: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  actionText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontWeight: '500',
+  },
+  likedText: {
+    color: colors.error,
   },
 });

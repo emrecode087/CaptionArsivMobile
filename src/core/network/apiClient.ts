@@ -7,21 +7,26 @@ import axios, {
 
 import { appConfig } from '../config/appConfig';
 import { ApiError, ApiResult } from '../types/api';
+import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 
 type TokenProvider = () => string | null | Promise<string | null>;
 
 let accessTokenProvider: TokenProvider | null = null;
+
+// Extend config to track retry attempts
+declare module 'axios' {
+  export interface InternalAxiosRequestConfig {
+    _retry?: boolean;
+  }
+}
 
 export const setAccessTokenProvider = (provider: TokenProvider | null) => {
   accessTokenProvider = provider;
 };
 
 const withAuthHeader = async (config: InternalAxiosRequestConfig) => {
-  if (!accessTokenProvider) {
-    return config;
-  }
-
-  const token = await accessTokenProvider();
+  // Use the provider if set, otherwise try to get from store directly
+  let token = accessTokenProvider ? await accessTokenProvider() : useAuthStore.getState().accessToken;
 
   if (token) {
     const headers = config.headers instanceof AxiosHeaders ? config.headers : new AxiosHeaders(config.headers);
@@ -31,6 +36,7 @@ const withAuthHeader = async (config: InternalAxiosRequestConfig) => {
 
   return config;
 };
+
 
 const buildRequestUrl = (config: InternalAxiosRequestConfig) => {
   const rawUrl = config.url ?? '';
@@ -124,7 +130,55 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error: AxiosError<ApiResult<unknown>>) => {
-    const { config } = error;
+    const { config, response } = error;
+    
+    // Handle 401 Unauthorized - Token Refresh
+    // Login request should not trigger refresh logic
+    const isLoginRequest = config?.url?.toLowerCase().includes('/auth/login');
+    
+    if (response?.status === 401 && config && !config._retry && !isLoginRequest) {
+      config._retry = true;
+      
+      try {
+        const refreshToken = useAuthStore.getState().refreshToken;
+        
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        // Use a new axios instance to avoid interceptor loops
+        const refreshResponse = await axios.post(
+          `${config.baseURL}/Auth/refresh`,
+          { refreshToken },
+          {
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
+
+        const { data } = refreshResponse;
+        
+        if (data.isSuccess && data.data) {
+          const { accessToken, refreshToken: newRefreshToken } = data.data;
+          
+          // Update store
+          useAuthStore.getState().setTokens(accessToken, newRefreshToken);
+          
+          // Update header and retry original request
+          if (config.headers) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+          }
+          
+          return apiClient(config);
+        } else {
+          throw new Error('Refresh failed');
+        }
+      } catch (refreshError) {
+        // Logout if refresh fails
+        useAuthStore.getState().logout();
+        return Promise.reject(refreshError);
+      }
+    }
+
     const fallbackBaseUrl = appConfig.api.fallbackBaseUrl ?? undefined;
 
     const shouldAttemptFallback =

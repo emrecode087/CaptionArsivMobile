@@ -16,13 +16,16 @@ import { Button } from '@/core/ui/Button';
 import { borderRadius, colors, spacing, typography } from '@/core/theme/tokens';
 import type { AuthStackParamList } from '../navigation/types';
 
+import { useAuthStore } from '../stores/useAuthStore';
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface OnboardingSlide {
   id: string;
   title: string;
   description: string;
-  emoji: string;
+  emoji?: string;
+  image?: any;
 }
 
 const SLIDES: OnboardingSlide[] = [
@@ -30,7 +33,7 @@ const SLIDES: OnboardingSlide[] = [
     id: '1',
     title: 'CaptionArşiv\'e Hoş Geldiniz',
     description: 'En sevdiğiniz sosyal medya içeriklerini tek bir yerde toplayın ve organize edin.',
-    emoji: '🎬',
+    image: require('../../../../assets/logo.png'),
   },
   {
     id: '2',
@@ -60,6 +63,7 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
+  const setHasSeenOnboarding = useAuthStore((state) => state.setHasSeenOnboarding);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -74,10 +78,12 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
   };
 
   const handleSkip = () => {
+    setHasSeenOnboarding();
     navigation.navigate('Login');
   };
 
   const handleGetStarted = () => {
+    setHasSeenOnboarding();
     navigation.navigate('Login');
   };
 
@@ -86,7 +92,11 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
   const renderSlide = ({ item }: { item: OnboardingSlide }) => (
     <View style={styles.slide}>
       <View style={styles.emojiContainer}>
-        <Text style={styles.emoji}>{item.emoji}</Text>
+        {item.image ? (
+          <Image source={item.image} style={styles.slideImage} resizeMode="contain" />
+        ) : (
+          <Text style={styles.emoji}>{item.emoji}</Text>
+        )}
       </View>
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.description}>{item.description}</Text>
@@ -146,13 +156,16 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
             <Button
               title="Giriş Yap"
               variant="outline"
-              onPress={() => navigation.navigate('Login')}
+              onPress={handleGetStarted}
               style={styles.authButton}
             />
             <Button
               title="Kayıt Ol"
               variant="primary"
-              onPress={() => navigation.navigate('Register')}
+              onPress={() => {
+                setHasSeenOnboarding();
+                navigation.navigate('Register');
+              }}
               style={styles.authButton}
             />
           </View>
@@ -191,7 +204,11 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   emoji: {
-    fontSize: 80,
+    fontSize: 64,
+  },
+  slideImage: {
+    width: 80,
+    height: 80,
   },
   title: {
     ...typography.h2,

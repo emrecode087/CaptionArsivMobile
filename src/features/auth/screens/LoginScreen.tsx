@@ -7,6 +7,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  Image,
 } from 'react-native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
@@ -14,6 +16,10 @@ import { Button } from '@/core/ui/Button';
 import { Input, PasswordInput } from '@/core/ui/Input';
 import { borderRadius, colors, spacing, typography } from '@/core/theme/tokens';
 import type { AuthStackParamList } from '../navigation/types';
+
+import { useAuthStore } from '../stores/useAuthStore';
+import { login as loginApi } from '../data/authApi';
+import { ApiError } from '@/core/types/api';
 
 interface LoginScreenProps {
   navigation: StackNavigationProp<AuthStackParamList, 'Login'>;
@@ -23,14 +29,50 @@ export const LoginScreen = memo<LoginScreenProps>(({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const login = useAuthStore((state) => state.login);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Hata', 'Lütfen e-posta ve şifrenizi giriniz.');
+      return;
+    }
+
     setLoading(true);
-    // TODO: Backend bağlantısı eklenecek
-    setTimeout(() => {
+    try {
+      const result = await loginApi({ emailOrUserName: email, password });
+      
+      if (result.isSuccess && result.data) {
+        const { accessToken, refreshToken, user } = result.data;
+        login(accessToken, refreshToken, user);
+      } else {
+        Alert.alert('Giriş Başarısız', result.message || 'Kullanıcı adı veya şifre hatalı.');
+      }
+    } catch (error: any) {
+      let errorMessage = 'Bir sorun oluştu. Lütfen tekrar deneyiniz.';
+
+      if (error instanceof ApiError) {
+        // Eğer backend'den gelen errors dizisi varsa, sadece onu gösterelim
+        if (error.errors && error.errors.length > 0) {
+          errorMessage = error.errors.map(e => (typeof e === 'string' ? e : e.message)).join('\n');
+        } else {
+          // Errors yoksa, mesajı kontrol edelim
+          // "Request failed with status code 401" gibi teknik mesajları filtreleyelim
+          if (error.message && !error.message.includes('Request failed with status code')) {
+             errorMessage = error.message;
+          } else if (error.status === 401) {
+             errorMessage = 'Kullanıcı adı veya şifre hatalı.';
+          } else {
+             errorMessage = error.message;
+          }
+        }
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert('Giriş Başarısız', errorMessage);
+    } finally {
       setLoading(false);
-      console.log('Login:', { email, password });
-    }, 1500);
+    }
   };
 
   return (
@@ -45,7 +87,11 @@ export const LoginScreen = memo<LoginScreenProps>(({ navigation }) => {
       >
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logo}>🎬</Text>
+            <Image 
+              source={require('../../../../assets/logo.png')} 
+              style={styles.logoImage} 
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.title}>Hoş Geldiniz</Text>
           <Text style={styles.subtitle}>Hesabınıza giriş yapın</Text>
@@ -118,21 +164,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
   },
-  logo: {
-    fontSize: 50,
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   title: {
     ...typography.h2,

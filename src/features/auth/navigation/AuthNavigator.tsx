@@ -6,12 +6,16 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import type { AuthStackParamList } from './types';
+import { useAuthStore } from '../stores/useAuthStore';
 
 const Stack = createStackNavigator<AuthStackParamList>();
 
 export const AuthNavigator = memo(() => {
+  const { hasSeenOnboarding } = useAuthStore();
+
   return (
     <Stack.Navigator
+      initialRouteName={hasSeenOnboarding ? 'Login' : 'Start'}
       screenOptions={{
         headerShown: false,
         cardStyle: { backgroundColor: '#F8F9FA' },

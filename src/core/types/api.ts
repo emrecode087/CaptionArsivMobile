@@ -8,15 +8,15 @@ export interface ApiResult<TData> {
   isSuccess: boolean;
   message?: string | null;
   data?: TData | null;
-  errors?: ApiErrorDetail[] | null;
+  errors?: (ApiErrorDetail | string)[] | null;
 }
 
 export class ApiError extends Error {
   readonly status?: number;
 
-  readonly errors?: ApiErrorDetail[] | null;
+  readonly errors?: (ApiErrorDetail | string)[] | null;
 
-  constructor(message: string, options?: { status?: number; errors?: ApiErrorDetail[] | null; cause?: unknown }) {
+  constructor(message: string, options?: { status?: number; errors?: (ApiErrorDetail | string)[] | null; cause?: unknown }) {
     super(message, options);
     this.name = 'ApiError';
     this.status = options?.status;

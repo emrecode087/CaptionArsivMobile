@@ -7,6 +7,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  Image,
 } from 'react-native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
@@ -14,6 +16,7 @@ import { Button } from '@/core/ui/Button';
 import { Input, PasswordInput } from '@/core/ui/Input';
 import { borderRadius, colors, spacing, typography } from '@/core/theme/tokens';
 import type { AuthStackParamList } from '../navigation/types';
+import { register } from '../data/authApi';
 
 interface RegisterScreenProps {
   navigation: StackNavigationProp<AuthStackParamList, 'Register'>;
@@ -27,12 +30,33 @@ export const RegisterScreen = memo<RegisterScreenProps>(({ navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
+    if (!username || !email || !password || !confirmPassword) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurunuz.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Hata', 'Şifreler eşleşmiyor.');
+      return;
+    }
+
     setLoading(true);
-    // TODO: Backend bağlantısı eklenecek
-    setTimeout(() => {
+    try {
+      const result = await register({ userName: username, email, password });
+      
+      if (result.isSuccess) {
+        Alert.alert('Başarılı', 'Kayıt işlemi başarıyla tamamlandı. Giriş yapabilirsiniz.', [
+          { text: 'Tamam', onPress: () => navigation.navigate('Login') }
+        ]);
+      } else {
+        Alert.alert('Kayıt Başarısız', result.message || 'Bir hata oluştu.');
+      }
+    } catch (error) {
+      Alert.alert('Hata', 'Bir sorun oluştu. Lütfen tekrar deneyiniz.');
+      console.error(error);
+    } finally {
       setLoading(false);
-      console.log('Register:', { username, email, password, confirmPassword });
-    }, 1500);
+    }
   };
 
   return (
@@ -47,7 +71,11 @@ export const RegisterScreen = memo<RegisterScreenProps>(({ navigation }) => {
       >
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logo}>📝</Text>
+            <Image 
+              source={require('../../../../assets/logo.png')} 
+              style={styles.logoImage} 
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.title}>Hesap Oluşturun</Text>
           <Text style={styles.subtitle}>Hemen başlamak için kayıt olun</Text>
@@ -133,21 +161,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
   },
-  logo: {
-    fontSize: 50,
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   title: {
     ...typography.h2,
