@@ -1,23 +1,37 @@
 import { memo } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 
+import { CategoriesScreen } from '@/features/categories/screens/CategoriesScreen';
+import { CategoryPostsScreen } from '@/features/categories/screens/CategoryPostsScreen';
 import { HomeScreen } from '@/features/home/screens/HomeScreen';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
+import { CollectionsScreen } from '@/features/collections/screens/CollectionsScreen';
+import { CollectionDetailScreen } from '@/features/collections/screens/CollectionDetailScreen';
 import { colors } from '@/core/theme/tokens';
+import { CustomHeader } from '@/core/ui/CustomHeader';
+import { Sidebar } from '@/core/ui/Sidebar';
+import { usePermissions } from '@/features/auth/hooks/usePermissions';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
-// Placeholder screens
-const SearchScreen = () => <View style={{ flex: 1, backgroundColor: '#F8F9FA' }} />;
-const AddPostScreen = () => <View style={{ flex: 1, backgroundColor: '#F8F9FA' }} />;
+import { CreatePostScreen } from '@/features/posts/screens/CreatePostScreen';
+import { PostDetailScreen } from '@/features/posts/screens/PostDetailScreen';
 
-export const MainNavigator = memo(() => {
+// Placeholder for the Add tab since we'll intercept the press
+const AddPlaceholder = () => <View style={{ flex: 1, backgroundColor: colors.background }} />;
+
+const BottomTabNavigator = () => {
+  const { canCreatePost } = usePermissions();
+
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: false,
+        header: () => <CustomHeader />,
+        headerShown: true,
         tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
         tabBarActiveTintColor: colors.primary,
@@ -34,25 +48,33 @@ export const MainNavigator = memo(() => {
         }}
       />
       <Tab.Screen
-        name="Search"
-        component={SearchScreen}
+        name="Collections"
+        component={CollectionsScreen}
         options={{
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'search' : 'search-outline'} size={size} color={color} />
+            <Ionicons name={focused ? 'albums' : 'albums-outline'} size={size} color={color} />
           ),
         }}
       />
-      <Tab.Screen
-        name="Add"
-        component={AddPostScreen}
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.addButton}>
-              <Ionicons name="add" size={32} color="#FFF" />
-            </View>
-          ),
-        }}
-      />
+      {canCreatePost && (
+        <Tab.Screen
+          name="Add"
+          component={AddPlaceholder}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              e.preventDefault();
+              navigation.navigate('CreatePost');
+            },
+          })}
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <View style={styles.addButton}>
+                <Ionicons name="add" size={32} color="#fff" />
+              </View>
+            ),
+          }}
+        />
+      )}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -63,6 +85,60 @@ export const MainNavigator = memo(() => {
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+export const MainNavigator = memo(() => {
+  return (
+    <View style={{ flex: 1 }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Tabs" component={BottomTabNavigator} />
+        <Stack.Screen name="CreatePost" component={CreatePostScreen} />
+        <Stack.Screen 
+          name="PostDetail" 
+          component={PostDetailScreen}
+          options={{
+            headerShown: true,
+            headerTitle: () => (
+              <Image 
+                source={require('../../assets/logo.png')} 
+                style={{ width: 120, height: 40 }} 
+                resizeMode="contain" 
+              />
+            ),
+            headerTitleAlign: 'center',
+            headerTintColor: colors.text.primary,
+          }}
+        />
+        <Stack.Screen 
+          name="CategoryPosts" 
+          component={CategoryPostsScreen}
+          options={{
+            headerShown: true,
+            headerTintColor: colors.text.primary,
+          }}
+        />
+        <Stack.Screen 
+          name="CategoriesManagement" 
+          component={CategoriesScreen}
+          options={{
+            headerShown: true,
+            title: 'Kategori Yönetimi',
+            headerTintColor: colors.text.primary,
+          }}
+        />
+        <Stack.Screen 
+          name="CollectionDetail" 
+          component={CollectionDetailScreen}
+          options={{
+            headerShown: true,
+            title: 'Collection Details',
+            headerTintColor: colors.text.primary,
+          }}
+        />
+      </Stack.Navigator>
+      <Sidebar />
+    </View>
   );
 });
 

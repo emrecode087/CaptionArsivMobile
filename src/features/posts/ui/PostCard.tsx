@@ -1,21 +1,81 @@
-import { memo, useState } from 'react';
-import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Linking } from 'react-native';
+import { memo, useState, useEffect } from 'react';
+import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Linking, Pressable, Image } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 
 import type { Post } from '../domain/types';
 import { colors, spacing } from '@/core/theme/tokens';
+import { AddToCollectionModal } from '@/features/collections/ui/AddToCollectionModal';
+import { useAuthStore } from '@/features/auth/stores/useAuthStore';
+import { Alert } from 'react-native';
+import { useLikePostMutation, useUnlikePostMutation } from '../data/usePostsQuery';
 
 interface PostCardProps {
   post: Post;
+  isDetailView?: boolean;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_PADDING = 16;
 
-export const PostCard = memo(({ post }: PostCardProps) => {
+export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => {
+  const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const [webViewHeight, setWebViewHeight] = useState(400);
-  const [isLiked, setIsLiked] = useState(false); // TODO: Gerçek veri ile bağlanacak
+  const [isCollectionModalVisible, setIsCollectionModalVisible] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+  
+  const shouldShowWebView = isDetailView || isFocused;
+  
+  const likeMutation = useLikePostMutation();
+  const unlikeMutation = useUnlikePostMutation();
+  
+  const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
+
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('[PostCard] Post updated - id:', post.id, 'isLikedByCurrentUser:', post.isLikedByCurrentUser, 'likeCount:', post.likeCount);
+    }
+    setIsLiked(post.isLikedByCurrentUser);
+    setLikeCount(post.likeCount);
+  }, [post.isLikedByCurrentUser, post.likeCount, post.id]);
+
+  const handleLike = () => {
+    if (!isAuthenticated) {
+      Alert.alert('Giriş Yapmalısınız', 'Beğenmek için lütfen giriş yapın.');
+      return;
+    }
+
+    if (isLiked) {
+      setIsLiked(false);
+      setLikeCount((prev) => Math.max(0, prev - 1));
+      unlikeMutation.mutate(post.id, {
+        onError: () => {
+          setIsLiked(true);
+          setLikeCount((prev) => prev + 1);
+        },
+      });
+    } else {
+      setIsLiked(true);
+      setLikeCount((prev) => prev + 1);
+      likeMutation.mutate(post.id, {
+        onError: () => {
+          setIsLiked(false);
+          setLikeCount((prev) => Math.max(0, prev - 1));
+        },
+      });
+    }
+  };
+
+  const handlePress = () => {
+    if (!isDetailView) {
+      navigation.navigate('PostDetail', { postId: post.id });
+    }
+  };
+
+
 
   const injectedJavaScript = `
     (function() {
@@ -93,7 +153,13 @@ export const PostCard = memo(({ post }: PostCardProps) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.height && data.height > 50) {
-        setWebViewHeight(data.height);
+        setWebViewHeight((currentHeight) => {
+          // Only update if the difference is significant (> 1px) to prevent infinite loops
+          if (Math.abs(currentHeight - data.height) > 1) {
+            return data.height;
+          }
+          return currentHeight;
+        });
       }
     } catch (error) {
       console.warn('Failed to parse WebView message', error);
@@ -102,100 +168,136 @@ export const PostCard = memo(({ post }: PostCardProps) => {
 
   return (
     <View style={styles.card}>
-      <View style={styles.header}>
-        <View style={styles.userInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{post.userName.charAt(0).toUpperCase()}</Text>
+      <Pressable onPress={handlePress}>
+        <View style={styles.header}>
+          <View style={styles.userInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{post.userName.charAt(0).toUpperCase()}</Text>
+            </View>
+            <View>
+              <Text style={styles.username}>@{post.userName}</Text>
+              <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString('tr-TR')}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.username}>@{post.userName}</Text>
-            <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString('tr-TR')}</Text>
-          </View>
+          <TouchableOpacity style={styles.moreButton}>
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.text.tertiary} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.moreButton}>
-          <Ionicons name="ellipsis-horizontal" size={20} color={colors.text.tertiary} />
-        </TouchableOpacity>
-      </View>
 
-      {post.caption ? <Text style={styles.caption}>{post.caption}</Text> : null}
+        {post.caption ? <Text style={styles.caption}>{post.caption}</Text> : null}
+      </Pressable>
 
       {post.embedHtml && (
         <View style={[styles.embedContainer, { height: webViewHeight }]}>
-          <WebView
-            source={{ html: htmlContent, baseUrl: 'https://twitter.com' }}
-            style={styles.webview}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
-            showsHorizontalScrollIndicator={false}
-            injectedJavaScript={injectedJavaScript}
-            onMessage={handleMessage}
-            javaScriptEnabled
-            domStorageEnabled
-            startInLoadingState
-            scalesPageToFit={false}
-            bounces={false}
-            allowsInlineMediaPlayback={true}
-            mediaPlaybackRequiresUserAction={false}
-            originWhitelist={['*']}
-            mixedContentMode="always"
-            androidLayerType="hardware"
-            onShouldStartLoadWithRequest={(request) => {
-              const { url } = request;
-              
-              // Allow standard web content to load
-              if (url.startsWith('http') || url.startsWith('https') || url.startsWith('about:blank')) {
-                // If it's a user click (e.g. "Watch on X"), open in system browser
-                if (request.navigationType === 'click') {
-                  Linking.openURL(url).catch(() => {});
-                  return false;
+          {shouldShowWebView ? (
+            <WebView
+              source={{ html: htmlContent, baseUrl: 'https://twitter.com' }}
+              style={[styles.webview, { opacity: 0.99 }]}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+              injectedJavaScript={injectedJavaScript}
+              onMessage={handleMessage}
+              javaScriptEnabled
+              domStorageEnabled
+              startInLoadingState={false}
+              scalesPageToFit={false}
+              bounces={false}
+              allowsInlineMediaPlayback={true}
+              mediaPlaybackRequiresUserAction={false}
+              originWhitelist={['*']}
+              mixedContentMode="always"
+              onShouldStartLoadWithRequest={(request) => {
+                const { url } = request;
+                
+                // Allow standard web content to load
+                if (url.startsWith('http') || url.startsWith('https') || url.startsWith('about:blank')) {
+                  // If it's a user click (e.g. "Watch on X"), open in system browser
+                  if (request.navigationType === 'click') {
+                    Linking.openURL(url).catch(() => {});
+                    return false;
+                  }
+                  return true;
                 }
-                return true;
-              }
 
-              // Handle custom schemes (e.g. twitter://) by opening in system handler
-              Linking.openURL(url).catch(() => {});
-              return false;
-            }}
-          />
+                // Handle custom schemes (e.g. twitter://) by opening in system handler
+                Linking.openURL(url).catch(() => {});
+                return false;
+              }}
+            />
+          ) : (
+            <View style={{ width: '100%', height: '100%', backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+              {post.thumbnailUrl && (
+                <Image source={{ uri: post.thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              )}
+              <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.8)" />
+            </View>
+          )}
         </View>
       )}
 
-      {post.tags?.length ? (
-        <View style={styles.tagsContainer}>
-          {post.tags.map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>#{tag}</Text>
-            </View>
-          ))}
+      <Pressable onPress={handlePress}>
+        {post.tags?.length ? (
+          <View style={styles.tagsContainer}>
+            {post.tags.map((tag, index) => (
+              <View key={index} style={styles.tag}>
+                <Text style={styles.tagText}>#{tag}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        <View style={styles.footer}>
+          <View style={styles.actions}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleLike}
+            >
+              <Ionicons 
+                name={isLiked ? "heart" : "heart-outline"} 
+                size={24} 
+                color={isLiked ? colors.error : colors.text.secondary} 
+              />
+              <Text style={[styles.actionText, isLiked && styles.likedText]}>
+                {likeCount}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => navigation.navigate('PostDetail', { postId: post.id })}
+            >
+              <Ionicons name="chatbubble-outline" size={22} color={colors.text.secondary} />
+              <Text style={styles.actionText}>{post.commentCount}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => {
+                if (!isAuthenticated) {
+                  Alert.alert('Login Required', 'Please login to add posts to collections.');
+                  return;
+                }
+                setIsCollectionModalVisible(true);
+              }}
+            >
+              <Ionicons name="bookmark-outline" size={22} color={colors.text.secondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButton}>
+              <Ionicons name="flag-outline" size={20} color={colors.text.tertiary} />
+            </TouchableOpacity>
+          </View>
         </View>
-      ) : null}
+      </Pressable>
 
-      <View style={styles.footer}>
-        <View style={styles.actions}>
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={() => setIsLiked(!isLiked)}
-          >
-            <Ionicons 
-              name={isLiked ? "heart" : "heart-outline"} 
-              size={24} 
-              color={isLiked ? colors.error : colors.text.secondary} 
-            />
-            <Text style={[styles.actionText, isLiked && styles.likedText]}>
-              {post.likeCount + (isLiked ? 1 : 0)}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="chatbubble-outline" size={22} color={colors.text.secondary} />
-            <Text style={styles.actionText}>{post.commentCount}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="flag-outline" size={20} color={colors.text.tertiary} />
-        </TouchableOpacity>
-      </View>
+      <AddToCollectionModal
+        visible={isCollectionModalVisible}
+        onClose={() => setIsCollectionModalVisible(false)}
+        postId={post.id}
+      />
     </View>
   );
 });

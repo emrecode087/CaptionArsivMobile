@@ -68,12 +68,37 @@ export const typography = {
     fontWeight: '600' as const,
     lineHeight: 28,
   },
+  subtitle1: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    lineHeight: 24,
+  },
+  subtitle2: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    lineHeight: 20,
+  },
   body: {
     fontSize: 16,
     fontWeight: '400' as const,
     lineHeight: 24,
   },
+  body1: {
+    fontSize: 16,
+    fontWeight: '400' as const,
+    lineHeight: 24,
+  },
+  body2: {
+    fontSize: 14,
+    fontWeight: '400' as const,
+    lineHeight: 20,
+  },
   bodyBold: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    lineHeight: 24,
+  },
+  button: {
     fontSize: 16,
     fontWeight: '600' as const,
     lineHeight: 24,

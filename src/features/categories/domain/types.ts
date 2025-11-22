@@ -5,8 +5,22 @@ export interface Category {
   isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  postCount?: number;
+  followerCount?: number;
 }
 
 export interface CategoryListParams {
+  search?: string;
   includeDeleted?: boolean;
 }
+
+export interface CreateCategoryRequest {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateCategoryRequest {
+  name: string;
+  description?: string;
+}
+
