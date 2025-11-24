@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Image, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing } from '@/core/theme/tokens';
+import { spacing } from '@/core/theme/tokens';
 import { useUIStore } from '@/core/stores/useUIStore';
+import { useTheme } from '@/core/theme/useTheme';
 
 interface CustomHeaderProps {
   onSearchPress?: () => void;
@@ -13,6 +14,45 @@ interface CustomHeaderProps {
 export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeaderProps) => {
   const insets = useSafeAreaInsets();
   const { toggleSidebar } = useUIStore();
+  const { colors } = useTheme();
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      zIndex: 100,
+    },
+    content: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.md,
+    },
+    leftContainer: {
+      flex: 1,
+    },
+    logoContainer: {
+      flex: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    logo: {
+      height: 32,
+      width: 120, 
+    },
+    rightContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    iconButton: {
+      padding: spacing.xs,
+    },
+  }), [colors]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -47,40 +87,4 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    zIndex: 100,
-  },
-  content: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-  },
-  leftContainer: {
-    flex: 1,
-  },
-  logoContainer: {
-    flex: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logo: {
-    height: 32,
-    width: 120, 
-  },
-  rightContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  iconButton: {
-    padding: spacing.xs,
-  },
-});
+

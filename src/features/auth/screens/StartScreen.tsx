@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react';
+import { memo, useRef, useState, useMemo } from 'react';
 import {
   Animated,
   Dimensions,
@@ -13,7 +13,8 @@ import {
 import type { StackNavigationProp } from '@react-navigation/stack';
 
 import { Button } from '@/core/ui/Button';
-import { borderRadius, colors, spacing, typography } from '@/core/theme/tokens';
+import { borderRadius, spacing, typography } from '@/core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 import type { AuthStackParamList } from '../navigation/types';
 
 import { useAuthStore } from '../stores/useAuthStore';
@@ -60,6 +61,8 @@ interface StartScreenProps {
 }
 
 export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -177,7 +180,7 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
 
 StartScreen.displayName = 'StartScreen';
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

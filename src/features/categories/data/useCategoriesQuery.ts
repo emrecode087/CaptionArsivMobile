@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 
 import { ApiError } from '@/core/types/api';
+import { postsQueryKeys } from '@/features/posts/data/usePostsQuery';
 
-import { fetchCategories, createCategory, updateCategory, deleteCategory } from './categoriesApi';
-import type { Category, CategoryListParams, CreateCategoryRequest, UpdateCategoryRequest } from '../domain/types';
+import { fetchCategories, createCategory, updateCategory, deleteCategory, followCategory, unfollowCategory, getCategoryById } from './categoriesApi';
+import type { Category, CategoryListParams, CreateCategoryRequest, UpdateCategoryRequest, CategoryFollowStatus } from '../domain/types';
 
 export const categoriesQueryKeys = {
   all: ['categories'] as const,
@@ -57,3 +58,71 @@ export const useDeleteCategoryMutation = () => {
     },
   });
 };
+
+export const useFollowCategoryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<CategoryFollowStatus, ApiError, string>({
+    mutationFn: followCategory,
+    onSuccess: (data) => {
+      // Optimistic update for list
+      queryClient.setQueryData<Category[]>(categoriesQueryKeys.list(), (old) => {
+        if (!old) return old;
+        return old.map((cat) =>
+          cat.id === data.categoryId
+            ? { ...cat, isFollowing: data.isFollowing, followerCount: data.followerCount }
+            : cat
+        );
+      });
+
+      // Optimistic update for detail
+      queryClient.setQueryData<Category>(categoriesQueryKeys.detail(data.categoryId), (old) => {
+        if (!old) return old;
+        return { ...old, isFollowing: data.isFollowing, followerCount: data.followerCount };
+      });
+
+      queryClient.invalidateQueries({ queryKey: postsQueryKeys.all });
+    },
+  });
+};
+
+export const useUnfollowCategoryMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<CategoryFollowStatus, ApiError, string>({
+    mutationFn: unfollowCategory,
+    onSuccess: (data) => {
+      // Optimistic update for list
+      queryClient.setQueryData<Category[]>(categoriesQueryKeys.list(), (old) => {
+        if (!old) return old;
+        return old.map((cat) =>
+          cat.id === data.categoryId
+            ? { ...cat, isFollowing: data.isFollowing, followerCount: data.followerCount }
+            : cat
+        );
+      });
+
+      // Optimistic update for detail
+      queryClient.setQueryData<Category>(categoriesQueryKeys.detail(data.categoryId), (old) => {
+        if (!old) return old;
+        return { ...old, isFollowing: data.isFollowing, followerCount: data.followerCount };
+      });
+
+      queryClient.invalidateQueries({ queryKey: postsQueryKeys.all });
+    },
+  });
+};
+
+export const useCategoryQuery = (
+  id: string,
+  options?: Omit<
+    UseQueryOptions<Category, ApiError, Category, ReturnType<typeof categoriesQueryKeys.detail>>,
+    'queryKey' | 'queryFn'
+  >,
+) =>
+  useQuery({
+    queryKey: categoriesQueryKeys.detail(id),
+    queryFn: () => getCategoryById(id),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    ...options,
+  });

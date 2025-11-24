@@ -17,23 +17,25 @@ export interface Collection {
   userId: string;
   userName: string;
   name: string;
-  description: string;
+  description?: string;
   isPrivate: boolean;
   createdAt: string;
   updatedAt: string;
   postCount: number;
+  likeCount: number;
+  isLiked: boolean;
   posts: CollectionPost[];
 }
 
 export interface CreateCollectionRequest {
   name: string;
-  description: string;
+  description?: string;
   isPrivate: boolean;
 }
 
 export interface UpdateCollectionRequest {
   name: string;
-  description: string;
+  description?: string;
   isPrivate: boolean;
 }
 

@@ -7,6 +7,14 @@ export interface Category {
   updatedAt?: string;
   postCount?: number;
   followerCount?: number;
+  isFollowing?: boolean;
+}
+
+export interface CategoryFollowStatus {
+  categoryId: string;
+  categoryName: string;
+  isFollowing: boolean;
+  followerCount: number;
 }
 
 export interface CategoryListParams {

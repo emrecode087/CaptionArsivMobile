@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors, spacing, typography, borderRadius } from '../../../core/theme/tokens';
+import { spacing, typography, borderRadius } from '../../../core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 import { useCreatePostMutation } from '../data/usePostsQuery';
 import { useCategoriesQuery } from '../../categories/data/useCategoriesQuery';
 import { Category } from '../../categories/domain/types';
@@ -25,6 +26,7 @@ export const CreatePostScreen = () => {
   const navigation = useNavigation();
   const createPostMutation = useCreatePostMutation();
   const { data: categories, isLoading: isLoadingCategories } = useCategoriesQuery();
+  const { colors } = useTheme();
 
   const [sourceUrl, setSourceUrl] = useState('');
   const [caption, setCaption] = useState('');
@@ -33,6 +35,170 @@ export const CreatePostScreen = () => {
   const [tags, setTags] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: spacing.md,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.background, // slightly darker than surface
+      elevation: 2,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+    },
+    backButton: {
+      padding: spacing.xs,
+    },
+    headerTitle: {
+      ...typography.h3,
+      color: colors.text.primary,
+    },
+    content: {
+      padding: spacing.md,
+    },
+    inputGroup: {
+      marginBottom: spacing.lg,
+    },
+    label: {
+      ...typography.subtitle2,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.md,
+      padding: spacing.sm,
+      ...typography.body2,
+      color: colors.text.primary,
+    },
+    textArea: {
+      height: 100,
+      textAlignVertical: 'top',
+    },
+    thumbnailPreview: {
+      width: '100%',
+      height: 200,
+      borderRadius: borderRadius.md,
+      marginTop: spacing.sm,
+      backgroundColor: colors.border,
+    },
+    thumbnailPlaceholder: {
+      width: '100%',
+      height: 200,
+      borderRadius: borderRadius.md,
+      marginTop: spacing.sm,
+      backgroundColor: colors.surfaceHighlight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+    },
+    placeholderText: {
+      ...typography.body2,
+      color: colors.text.tertiary,
+      marginTop: spacing.xs,
+    },
+    selectButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.md,
+      padding: spacing.sm,
+    },
+    selectButtonText: {
+      ...typography.body2,
+      color: colors.text.primary,
+    },
+    switchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xl,
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
+      marginBottom: spacing.xl,
+    },
+    disabledButton: {
+      opacity: 0.7,
+    },
+    submitButtonText: {
+      ...typography.button,
+      color: colors.surface,
+    },
+    modalOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.lg,
+      maxHeight: '80%',
+      padding: spacing.md,
+    },
+    modalTitle: {
+      ...typography.h3,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+      textAlign: 'center',
+    },
+    categoryList: {
+      marginBottom: spacing.md,
+    },
+    categoryItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    selectedCategoryItem: {
+      backgroundColor: colors.primaryLight + '20', // 20% opacity
+      borderRadius: borderRadius.sm,
+    },
+    categoryItemText: {
+      ...typography.body1,
+      color: colors.text.primary,
+    },
+    selectedCategoryItemText: {
+      color: colors.primary,
+      fontWeight: 'bold',
+    },
+    closeButton: {
+      alignItems: 'center',
+      padding: spacing.sm,
+    },
+    closeButtonText: {
+      ...typography.button,
+      color: colors.text.secondary,
+    },
+  }), [colors]);
 
   const handleSubmit = async () => {
     if (!sourceUrl) {
@@ -132,6 +298,7 @@ export const CreatePostScreen = () => {
             value={sourceUrl}
             onChangeText={setSourceUrl}
             placeholder="https://twitter.com/..."
+            placeholderTextColor={colors.text.tertiary}
             autoCapitalize="none"
           />
         </View>
@@ -143,6 +310,7 @@ export const CreatePostScreen = () => {
             value={thumbnailUrl}
             onChangeText={setThumbnailUrl}
             placeholder="https://..."
+            placeholderTextColor={colors.text.tertiary}
             autoCapitalize="none"
           />
           {thumbnailUrl ? (
@@ -162,6 +330,7 @@ export const CreatePostScreen = () => {
             value={caption}
             onChangeText={setCaption}
             placeholder="Post açıklaması..."
+            placeholderTextColor={colors.text.tertiary}
             multiline
             numberOfLines={4}
           />
@@ -187,6 +356,7 @@ export const CreatePostScreen = () => {
             value={tags}
             onChangeText={setTags}
             placeholder="komik, spor, haber..."
+            placeholderTextColor={colors.text.tertiary}
             autoCapitalize="none"
           />
         </View>
@@ -197,7 +367,7 @@ export const CreatePostScreen = () => {
             value={isPrivate}
             onValueChange={setIsPrivate}
             trackColor={{ false: colors.text.tertiary, true: colors.primaryLight }}
-            thumbColor={isPrivate ? colors.primary : '#f4f3f4'}
+            thumbColor={isPrivate ? colors.primary : colors.surface}
           />
         </View>
 
@@ -218,167 +388,3 @@ export const CreatePostScreen = () => {
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.background, // slightly darker than surface
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  backButton: {
-    padding: spacing.xs,
-  },
-  headerTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  inputGroup: {
-    marginBottom: spacing.lg,
-  },
-  label: {
-    ...typography.subtitle2,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    ...typography.body2,
-    color: colors.text.primary,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  thumbnailPreview: {
-    width: '100%',
-    height: 200,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.sm,
-    backgroundColor: '#E0E0E0',
-  },
-  thumbnailPlaceholder: {
-    width: '100%',
-    height: 200,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.sm,
-    backgroundColor: '#F0F0F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderStyle: 'dashed',
-  },
-  placeholderText: {
-    ...typography.body2,
-    color: colors.text.tertiary,
-    marginTop: spacing.xs,
-  },
-  selectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-  },
-  selectButtonText: {
-    ...typography.body2,
-    color: colors.text.primary,
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xl,
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  submitButtonText: {
-    ...typography.button,
-    color: colors.surface,
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    maxHeight: '80%',
-    padding: spacing.md,
-  },
-  modalTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  categoryList: {
-    marginBottom: spacing.md,
-  },
-  categoryItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  selectedCategoryItem: {
-    backgroundColor: colors.primaryLight + '20', // 20% opacity
-    borderRadius: borderRadius.sm,
-  },
-  categoryItemText: {
-    ...typography.body1,
-    color: colors.text.primary,
-  },
-  selectedCategoryItemText: {
-    color: colors.primary,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    alignItems: 'center',
-    padding: spacing.sm,
-  },
-  closeButtonText: {
-    ...typography.button,
-    color: colors.text.secondary,
-  },
-});

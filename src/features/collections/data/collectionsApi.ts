@@ -85,4 +85,14 @@ export const collectionsApi = {
     const response = await apiClient.delete(`${BASE_URL}/${id}/posts/${postId}`);
     return response.data;
   },
+
+  likeCollection: async (id: string): Promise<ApiResult<void>> => {
+    const response = await apiClient.post(`${BASE_URL}/${id}/like`);
+    return response.data;
+  },
+
+  unlikeCollection: async (id: string): Promise<ApiResult<void>> => {
+    const response = await apiClient.delete(`${BASE_URL}/${id}/like`);
+    return response.data;
+  },
 };

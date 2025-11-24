@@ -1,14 +1,18 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet, Text, View, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Button } from '@/core/ui/Button';
-import { colors, spacing, typography, borderRadius } from '@/core/theme/tokens';
+import { spacing, typography, borderRadius } from '@/core/theme/tokens';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
+import { useTheme } from '@/core/theme/useTheme';
 
 export const ProfileScreen = memo(() => {
   const { user, logout } = useAuthStore();
+  const { colors, themeMode, setThemeMode } = useTheme();
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -73,6 +77,33 @@ export const ProfileScreen = memo(() => {
         </View>
 
         <View style={styles.menuContainer}>
+          <View style={styles.themeSection}>
+            <Text style={styles.sectionTitle}>Tema</Text>
+            <View style={styles.themeButtons}>
+                <Button 
+                    title="Aydınlık" 
+                    variant={themeMode === 'light' ? 'primary' : 'outline'} 
+                    onPress={() => setThemeMode('light')}
+                    size="small"
+                    style={{ flex: 1 }}
+                />
+                <Button 
+                    title="Karanlık" 
+                    variant={themeMode === 'dark' ? 'primary' : 'outline'} 
+                    onPress={() => setThemeMode('dark')}
+                    size="small"
+                    style={{ flex: 1 }}
+                />
+                <Button 
+                    title="Otomatik" 
+                    variant={themeMode === 'system' ? 'primary' : 'outline'} 
+                    onPress={() => setThemeMode('system')}
+                    size="small"
+                    style={{ flex: 1 }}
+                />
+            </View>
+          </View>
+
           <Button
             title="Çıkış Yap"
             onPress={handleLogout}
@@ -89,10 +120,10 @@ export const ProfileScreen = memo(() => {
 
 ProfileScreen.displayName = 'ProfileScreen';
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: colors.background,
   },
   header: {
     paddingHorizontal: spacing.lg,
@@ -108,26 +139,35 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.lg,
+    gap: spacing.xl,
   },
   profileCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
     alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
+    borderRadius: borderRadius.lg,
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    marginBottom: spacing.xl,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   avatarContainer: {
     marginBottom: spacing.md,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
+    borderWidth: 4,
+    borderColor: colors.surface,
   },
   avatarPlaceholder: {
     width: 100,
@@ -136,16 +176,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: colors.surface,
   },
   avatarText: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    ...typography.h2,
+    color: colors.text.inverse,
   },
   username: {
-    ...typography.h3,
+    ...typography.h4,
     color: colors.text.primary,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   email: {
     ...typography.body,
@@ -155,15 +196,14 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     width: '100%',
     paddingTop: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.divider,
   },
   statItem: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   statNumber: {
     ...typography.h4,
@@ -172,21 +212,31 @@ const styles = StyleSheet.create({
   statLabel: {
     ...typography.caption,
     color: colors.text.secondary,
-    marginTop: 2,
   },
   divider: {
     width: 1,
     height: 24,
-    backgroundColor: colors.border,
+    backgroundColor: colors.divider,
   },
   menuContainer: {
     gap: spacing.md,
   },
   logoutButton: {
     borderColor: colors.error,
-    marginTop: 'auto',
   },
   logoutButtonText: {
     color: colors.error,
+  },
+  themeSection: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.subtitle2,
+    color: colors.text.secondary,
+  },
+  themeButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
 });

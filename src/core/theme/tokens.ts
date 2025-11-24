@@ -1,34 +1,87 @@
-export const colors = {
-  primary: '#6C5CE7',
-  primaryDark: '#5849C7',
-  primaryLight: '#A29BFE',
+const palette = {
+  black: '#000000',
+  white: '#FFFFFF',
+  gray50: '#FAFAFA',
+  gray100: '#F5F5F5',
+  gray200: '#EEEEEE',
+  gray300: '#E0E0E0',
+  gray400: '#BDBDBD',
+  gray500: '#9E9E9E',
+  gray600: '#757575',
+  gray700: '#616161',
+  gray800: '#424242',
+  gray900: '#212121',
+  gray950: '#121212',
+} as const;
+
+export const lightColors = {
+  primary: palette.black,
+  primaryDark: palette.gray800,
+  primaryLight: palette.gray600,
   
-  secondary: '#00B894',
-  secondaryDark: '#00967D',
+  secondary: palette.gray700,
+  secondaryDark: palette.gray900,
   
-  accent: '#FD79A8',
+  accent: palette.gray800,
   
-  background: '#F8F9FA',
-  surface: '#FFFFFF',
+  background: palette.white,
+  surface: palette.white,
+  surfaceHighlight: palette.gray50,
   
   text: {
-    primary: '#2D3436',
-    secondary: '#636E72',
-    tertiary: '#B2BEC3',
-    inverse: '#FFFFFF',
+    primary: palette.black,
+    secondary: palette.gray600,
+    tertiary: palette.gray400,
+    inverse: palette.white,
   },
   
-  error: '#D63031',
-  success: '#00B894',
-  warning: '#FDCB6E',
-  info: '#74B9FF',
+  error: '#D32F2F',
+  success: '#388E3C',
+  warning: '#FBC02D',
+  info: '#1976D2',
   
-  border: '#DFE6E9',
-  divider: '#ECEFF1',
+  border: palette.gray300,
+  divider: palette.gray200,
   
   overlay: 'rgba(0, 0, 0, 0.5)',
   shadow: 'rgba(0, 0, 0, 0.1)',
 } as const;
+
+export const darkColors = {
+  primary: palette.white,
+  primaryDark: palette.gray200,
+  primaryLight: palette.gray400,
+  
+  secondary: palette.gray400,
+  secondaryDark: palette.gray200,
+  
+  accent: palette.gray200,
+  
+  background: palette.black,
+  surface: palette.gray950,
+  surfaceHighlight: palette.gray900,
+  
+  text: {
+    primary: palette.white,
+    secondary: palette.gray400,
+    tertiary: palette.gray600,
+    inverse: palette.black,
+  },
+  
+  error: '#EF5350',
+  success: '#66BB6A',
+  warning: '#FFF176',
+  info: '#42A5F5',
+  
+  border: palette.gray800,
+  divider: palette.gray800,
+  
+  overlay: 'rgba(255, 255, 255, 0.1)',
+  shadow: 'rgba(0, 0, 0, 0.5)',
+} as const;
+
+// Deprecated: Use useTheme hook instead
+export const colors = lightColors;
 
 export const spacing = {
   xs: 4,

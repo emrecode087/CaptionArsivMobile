@@ -10,7 +10,7 @@ import { HomeScreen } from '@/features/home/screens/HomeScreen';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import { CollectionsScreen } from '@/features/collections/screens/CollectionsScreen';
 import { CollectionDetailScreen } from '@/features/collections/screens/CollectionDetailScreen';
-import { colors } from '@/core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 import { CustomHeader } from '@/core/ui/CustomHeader';
 import { Sidebar } from '@/core/ui/Sidebar';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
@@ -22,10 +22,42 @@ import { CreatePostScreen } from '@/features/posts/screens/CreatePostScreen';
 import { PostDetailScreen } from '@/features/posts/screens/PostDetailScreen';
 
 // Placeholder for the Add tab since we'll intercept the press
-const AddPlaceholder = () => <View style={{ flex: 1, backgroundColor: colors.background }} />;
+const AddPlaceholder = () => {
+  const { colors } = useTheme();
+  return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+};
 
 const BottomTabNavigator = () => {
   const { canCreatePost } = usePermissions();
+  const { colors } = useTheme();
+
+  const styles = StyleSheet.create({
+    tabBar: {
+      backgroundColor: colors.surface,
+      borderTopWidth: 0,
+      elevation: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      height: 60,
+      paddingBottom: 8,
+    },
+    addButton: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 24,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+  });
 
   return (
     <Tab.Navigator
@@ -89,6 +121,8 @@ const BottomTabNavigator = () => {
 };
 
 export const MainNavigator = memo(() => {
+  const { colors } = useTheme();
+
   return (
     <View style={{ flex: 1 }}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -108,6 +142,9 @@ export const MainNavigator = memo(() => {
             ),
             headerTitleAlign: 'center',
             headerTintColor: colors.text.primary,
+            headerStyle: {
+              backgroundColor: colors.surface,
+            },
           }}
         />
         <Stack.Screen 
@@ -116,6 +153,9 @@ export const MainNavigator = memo(() => {
           options={{
             headerShown: true,
             headerTintColor: colors.text.primary,
+            headerStyle: {
+              backgroundColor: colors.surface,
+            },
           }}
         />
         <Stack.Screen 
@@ -125,6 +165,9 @@ export const MainNavigator = memo(() => {
             headerShown: true,
             title: 'Kategori Yönetimi',
             headerTintColor: colors.text.primary,
+            headerStyle: {
+              backgroundColor: colors.surface,
+            },
           }}
         />
         <Stack.Screen 
@@ -134,6 +177,9 @@ export const MainNavigator = memo(() => {
             headerShown: true,
             title: 'Collection Details',
             headerTintColor: colors.text.primary,
+            headerStyle: {
+              backgroundColor: colors.surface,
+            },
           }}
         />
       </Stack.Navigator>
@@ -143,31 +189,3 @@ export const MainNavigator = memo(() => {
 });
 
 MainNavigator.displayName = 'MainNavigator';
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 0,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    height: 60,
-    paddingBottom: 8,
-  },
-  addButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-});

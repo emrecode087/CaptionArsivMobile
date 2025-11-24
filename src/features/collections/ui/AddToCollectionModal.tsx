@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMyCollectionsQuery, useCreateCollectionMutation, useAddPostToCollectionMutation } from '../data/useCollectionsQuery';
-import { colors, spacing, borderRadius, typography } from '../../../core/theme/tokens';
+import { spacing, borderRadius, typography } from '../../../core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 
 interface AddToCollectionModalProps {
   visible: boolean;
@@ -13,10 +14,121 @@ interface AddToCollectionModalProps {
 export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visible, onClose, postId }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
+  const { colors } = useTheme();
   
   const { data: collectionsData, isLoading: isLoadingCollections } = useMyCollectionsQuery();
   const createCollectionMutation = useCreateCollectionMutation();
   const addPostMutation = useAddPostToCollectionMutation();
+
+  const styles = useMemo(() => StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)', // Overlay color
+      justifyContent: 'flex-end',
+    },
+    content: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: borderRadius.lg,
+      borderTopRightRadius: borderRadius.lg,
+      padding: spacing.md,
+      maxHeight: '80%',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.md,
+    },
+    title: {
+      ...typography.h3,
+      color: colors.text.primary,
+    },
+    list: {
+      maxHeight: 300,
+    },
+    collectionItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    collectionIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: borderRadius.sm,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: spacing.sm,
+    },
+    collectionName: {
+      ...typography.bodyBold,
+      color: colors.text.primary,
+    },
+    collectionCount: {
+      ...typography.caption,
+      color: colors.text.secondary,
+    },
+    emptyText: {
+      textAlign: 'center',
+      color: colors.text.secondary,
+      padding: spacing.md,
+    },
+    newButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      marginTop: spacing.md,
+    },
+    newButtonText: {
+      ...typography.bodyBold,
+      color: colors.surface,
+      marginLeft: spacing.sm,
+    },
+    createContainer: {
+      marginTop: spacing.md,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.sm,
+      padding: spacing.sm,
+      marginBottom: spacing.sm,
+      ...typography.body,
+      color: colors.text.primary,
+      backgroundColor: colors.background,
+    },
+    createActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing.sm,
+    },
+    button: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: borderRadius.sm,
+    },
+    cancelButton: {
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    createButton: {
+      backgroundColor: colors.primary,
+    },
+    cancelButtonText: {
+      color: colors.text.primary,
+      ...typography.bodyBold,
+    },
+    createButtonText: {
+      color: colors.surface,
+      ...typography.bodyBold,
+    },
+  }), [colors]);
 
   const handleCreateCollection = () => {
     if (!newCollectionName.trim()) return;
@@ -97,6 +209,7 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
                   <TextInput
                     style={styles.input}
                     placeholder="Collection Name"
+                    placeholderTextColor={colors.text.tertiary}
                     value={newCollectionName}
                     onChangeText={setNewCollectionName}
                     autoFocus
@@ -137,109 +250,3 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  content: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    padding: spacing.md,
-    maxHeight: '80%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  title: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  list: {
-    maxHeight: 300,
-  },
-  collectionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  collectionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  collectionName: {
-    ...typography.bodyBold,
-    color: colors.text.primary,
-  },
-  collectionCount: {
-    ...typography.caption,
-    color: colors.text.secondary,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: colors.text.secondary,
-    padding: spacing.md,
-  },
-  newButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.md,
-  },
-  newButtonText: {
-    ...typography.bodyBold,
-    color: colors.surface,
-    marginLeft: spacing.sm,
-  },
-  createContainer: {
-    marginTop: spacing.md,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-    ...typography.body,
-  },
-  createActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.sm,
-  },
-  button: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-  },
-  cancelButton: {
-    backgroundColor: colors.background,
-  },
-  createButton: {
-    backgroundColor: colors.primary,
-  },
-  cancelButtonText: {
-    color: colors.text.primary,
-    ...typography.bodyBold,
-  },
-  createButtonText: {
-    color: colors.surface,
-    ...typography.bodyBold,
-  },
-});

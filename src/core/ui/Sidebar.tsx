@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Pressable, ScrollView, Image } from 'react-native';
 import Animated, { 
   useSharedValue, 
@@ -6,27 +6,106 @@ import Animated, {
   withTiming, 
   Easing
 } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors, spacing, typography } from '@/core/theme/tokens';
+import { spacing, typography } from '@/core/theme/tokens';
 import { useUIStore } from '@/core/stores/useUIStore';
 import { useCategoriesQuery } from '@/features/categories/data/useCategoriesQuery';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
+import { navigate } from '@/navigation/navigationRef';
+import { useTheme } from '@/core/theme/useTheme';
 
 const { width } = Dimensions.get('window');
 const SIDEBAR_WIDTH = width * 0.80;
 
 export const Sidebar = () => {
-  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { isSidebarOpen, setSidebarOpen } = useUIStore();
   const { data: categories } = useCategoriesQuery();
   const { canManageCategories } = usePermissions();
+  const { colors } = useTheme();
 
   const translateX = useSharedValue(-SIDEBAR_WIDTH);
   const opacity = useSharedValue(0);
+
+  const styles = useMemo(() => StyleSheet.create({
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    container: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: SIDEBAR_WIDTH,
+      backgroundColor: colors.surface,
+      zIndex: 1001,
+      shadowColor: '#000',
+      shadowOffset: { width: 4, height: 0 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      elevation: 10,
+      borderTopRightRadius: 20,
+      borderBottomRightRadius: 20,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: spacing.lg,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      marginBottom: spacing.sm,
+    },
+    logo: {
+      width: 120,
+      height: 40,
+    },
+    closeButton: {
+      padding: spacing.xs,
+      backgroundColor: colors.background,
+      borderRadius: 20,
+    },
+    content: {
+      padding: spacing.lg,
+      paddingTop: spacing.md,
+    },
+    sectionTitle: {
+      ...typography.caption,
+      color: colors.text.tertiary,
+      marginBottom: spacing.sm,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      fontWeight: '600',
+    },
+    item: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.sm,
+      borderRadius: 12,
+      marginBottom: 4,
+    },
+    itemIcon: {
+      marginRight: spacing.md,
+      width: 24,
+      alignItems: 'center',
+    },
+    itemText: {
+      ...typography.body,
+      color: colors.text.primary,
+      fontWeight: '500',
+    },
+    manageItem: {
+      backgroundColor: colors.primary + '10', // 10% opacity
+    },
+    manageText: {
+      color: colors.primary,
+      fontWeight: '600',
+    },
+  }), [colors]);
 
   useEffect(() => {
     if (isSidebarOpen) {
@@ -63,7 +142,7 @@ export const Sidebar = () => {
 
   const handleCategoryPress = (id: string, name: string) => {
     handleClose();
-    navigation.navigate('CategoryPosts', { categoryId: id, categoryName: name });
+    navigate('CategoryPosts', { categoryId: id, categoryName: name });
   };
 
   if (!isSidebarOpen && opacity.value === 0) return null;
@@ -94,7 +173,7 @@ export const Sidebar = () => {
                 style={[styles.item, styles.manageItem]}
                 onPress={() => {
                   handleClose();
-                  navigation.navigate('CategoriesManagement');
+                  navigate('CategoriesManagement');
                 }}
               >
                 <View style={styles.itemIcon}>
@@ -125,81 +204,3 @@ export const Sidebar = () => {
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  container: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: SIDEBAR_WIDTH,
-    backgroundColor: '#fff',
-    zIndex: 1001,
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 10,
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: spacing.sm,
-  },
-  logo: {
-    width: 120,
-    height: 40,
-  },
-  closeButton: {
-    padding: spacing.xs,
-    backgroundColor: colors.background,
-    borderRadius: 20,
-  },
-  content: {
-    padding: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.caption,
-    color: colors.text.tertiary,
-    marginBottom: spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontWeight: '600',
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: 12,
-    marginBottom: 4,
-  },
-  itemIcon: {
-    marginRight: spacing.md,
-    width: 24,
-    alignItems: 'center',
-  },
-  itemText: {
-    ...typography.body,
-    color: colors.text.primary,
-    fontWeight: '500',
-  },
-  manageItem: {
-    backgroundColor: colors.primary + '10', // 10% opacity
-  },
-  manageText: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-});

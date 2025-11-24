@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useMemo } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,7 +14,8 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 
 import { Button } from '@/core/ui/Button';
 import { Input, PasswordInput } from '@/core/ui/Input';
-import { borderRadius, colors, spacing, typography } from '@/core/theme/tokens';
+import { borderRadius, spacing, typography } from '@/core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 import type { AuthStackParamList } from '../navigation/types';
 
 import { useAuthStore } from '../stores/useAuthStore';
@@ -26,6 +27,8 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen = memo<LoginScreenProps>(({ navigation }) => {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -148,7 +151,7 @@ export const LoginScreen = memo<LoginScreenProps>(({ navigation }) => {
 
 LoginScreen.displayName = 'LoginScreen';
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

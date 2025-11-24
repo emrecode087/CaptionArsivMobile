@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -9,7 +9,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { borderRadius, colors, spacing } from '@/core/theme/tokens';
+import { borderRadius, spacing } from '@/core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
 type ButtonSize = 'small' | 'medium' | 'large';
@@ -38,6 +39,81 @@ export const Button = memo<ButtonProps>(
     textStyle,
     ...props
   }) => {
+    const { colors } = useTheme();
+
+    const styles = useMemo(() => StyleSheet.create({
+      base: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: borderRadius.md,
+        gap: spacing.sm,
+      },
+      primary: {
+        backgroundColor: colors.primary,
+      },
+      secondary: {
+        backgroundColor: colors.secondary,
+      },
+      outline: {
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        borderColor: colors.primary,
+      },
+      ghost: {
+        backgroundColor: 'transparent',
+      },
+      smallSize: {
+        paddingVertical: spacing.xs,
+        paddingHorizontal: spacing.md,
+        minHeight: 32,
+      },
+      mediumSize: {
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.lg,
+        minHeight: 44,
+      },
+      largeSize: {
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.xl,
+        minHeight: 56,
+      },
+      fullWidth: {
+        width: '100%',
+      },
+      disabled: {
+        opacity: 0.5,
+      },
+      text: {
+        fontWeight: '600',
+        textAlign: 'center',
+      },
+      primaryText: {
+        color: colors.text.inverse,
+      },
+      secondaryText: {
+        color: colors.text.inverse,
+      },
+      outlineText: {
+        color: colors.primary,
+      },
+      ghostText: {
+        color: colors.primary,
+      },
+      smallText: {
+        fontSize: 14,
+      },
+      mediumText: {
+        fontSize: 16,
+      },
+      largeText: {
+        fontSize: 18,
+      },
+      disabledText: {
+        color: colors.text.tertiary,
+      },
+    }), [colors]);
+
     const containerStyle = [
       styles.base,
       styles[variant],
@@ -79,76 +155,3 @@ export const Button = memo<ButtonProps>(
 );
 
 Button.displayName = 'Button';
-
-const styles = StyleSheet.create({
-  base: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
-  },
-  primary: {
-    backgroundColor: colors.primary,
-  },
-  secondary: {
-    backgroundColor: colors.secondary,
-  },
-  outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  fullWidth: {
-    width: '100%',
-  },
-  smallSize: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  mediumSize: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  largeSize: {
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-  },
-  text: {
-    fontWeight: '600',
-  },
-  primaryText: {
-    color: colors.text.inverse,
-    fontSize: 16,
-  },
-  secondaryText: {
-    color: colors.text.inverse,
-    fontSize: 16,
-  },
-  outlineText: {
-    color: colors.primary,
-    fontSize: 16,
-  },
-  ghostText: {
-    color: colors.primary,
-    fontSize: 16,
-  },
-  disabledText: {
-    opacity: 0.7,
-  },
-  smallText: {
-    fontSize: 14,
-  },
-  mediumText: {
-    fontSize: 16,
-  },
-  largeText: {
-    fontSize: 18,
-  },
-});

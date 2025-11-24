@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity, Image, Dimensions, Modal, ScrollView } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { CollectionDetailScreenRouteProp } from '../navigation/types';
-import { useCollectionDetailQuery, useRemovePostFromCollectionMutation } from '../data/useCollectionsQuery';
+import { useCollectionDetailQuery, useRemovePostFromCollectionMutation, useLikeCollectionMutation, useUnlikeCollectionMutation } from '../data/useCollectionsQuery';
 import { usePostDetailQuery } from '../../posts/data/usePostsQuery';
 import { PostCard } from '../../posts/ui/PostCard';
-import { colors, spacing, typography, borderRadius } from '../../../core/theme/tokens';
+import { spacing, typography, borderRadius } from '../../../core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 import { useAuthStore } from '../../auth/stores/useAuthStore';
 import { Ionicons } from '@expo/vector-icons';
 import { CollectionModal } from '../ui/CreateCollectionModal';
 import { Post } from '../../posts/domain/types';
 import { CollectionPost } from '../domain/types';
 
-const PostDetailModalContent = ({ postId, onRemove, canManage }: { postId: string, onRemove: () => void, canManage: boolean }) => {
+const PostDetailModalContent = ({ postId, onRemove, canManage, styles }: { postId: string, onRemove: () => void, canManage: boolean, styles: any }) => {
+  const { colors } = useTheme();
   const { data: post, isLoading, error } = usePostDetailQuery(postId);
 
   if (isLoading) {
@@ -51,16 +53,163 @@ export const CollectionDetailScreen = () => {
   const route = useRoute<CollectionDetailScreenRouteProp>();
   const { id } = route.params;
   const { user } = useAuthStore();
+  const { colors } = useTheme();
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<CollectionPost | null>(null);
   
   const { data, isLoading, error } = useCollectionDetailQuery(id, { includePosts: true });
   const removePostMutation = useRemovePostFromCollectionMutation();
+  const likeMutation = useLikeCollectionMutation();
+  const unlikeMutation = useUnlikeCollectionMutation();
 
   const collection = data?.data;
   const isOwner = user?.id === collection?.userId;
   const isModerator = user?.roles.includes('Moderator') || user?.roles.includes('SuperAdmin');
   const canManage = isOwner || isModerator;
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    header: {
+      padding: spacing.md,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    editButton: {
+      padding: spacing.xs,
+    },
+    title: {
+      ...typography.h3,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+      flex: 1,
+    },
+    description: {
+      ...typography.body,
+      color: colors.text.secondary,
+      marginBottom: spacing.sm,
+    },
+    stats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    statText: {
+      ...typography.caption,
+      color: colors.text.tertiary,
+    },
+    likeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    listContent: {
+      padding: spacing.md,
+    },
+    columnWrapper: {
+      gap: spacing.md,
+    },
+    gridItem: {
+      marginBottom: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: borderRadius.sm,
+      overflow: 'hidden',
+    },
+    gridImage: {
+      width: '100%',
+      height: '100%',
+    },
+    gridPlaceholder: {
+      width: '100%',
+      height: '100%',
+      padding: spacing.xs,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    gridCaption: {
+      ...typography.caption,
+      fontSize: 10,
+      color: colors.primaryDark,
+      textAlign: 'center',
+    },
+    gridIconContainer: {
+      position: 'absolute',
+      bottom: 4,
+      right: 4,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      borderRadius: 12,
+      padding: 2,
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      padding: spacing.md,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      alignItems: 'flex-end',
+    },
+    closeButton: {
+      padding: spacing.xs,
+    },
+    fullPostScroll: {
+      padding: spacing.md,
+    },
+    removeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.sm,
+      marginTop: spacing.lg,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.error,
+      borderRadius: borderRadius.sm,
+    },
+    removeButtonText: {
+      ...typography.bodyBold,
+      color: colors.error,
+      marginLeft: spacing.xs,
+    },
+    errorText: {
+      ...typography.body,
+      color: colors.error,
+    },
+    emptyContainer: {
+      padding: spacing.xl,
+      alignItems: 'center',
+    },
+    emptyText: {
+      ...typography.body,
+      color: colors.text.secondary,
+    },
+  }), [colors]);
+
+  const handleLikePress = () => {
+    if (!collection) return;
+    if (collection.isLiked) {
+      unlikeMutation.mutate(collection.id);
+    } else {
+      likeMutation.mutate(collection.id);
+    }
+  };
 
   const handleRemovePost = (postId: string) => {
     Alert.alert(
@@ -170,6 +319,25 @@ export const CollectionDetailScreen = () => {
           <Text style={styles.statText}>{collection.postCount} Posts</Text>
           <Text style={styles.statText}>•</Text>
           <Text style={styles.statText}>{collection.isPrivate ? 'Private' : 'Public'}</Text>
+          <Text style={styles.statText}>•</Text>
+          <TouchableOpacity 
+            style={styles.likeButton} 
+            onPress={isOwner ? undefined : handleLikePress}
+            disabled={isOwner}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons 
+              name={collection.isLiked ? "heart" : "heart-outline"} 
+              size={18} 
+              color={collection.isLiked ? colors.error : colors.text.secondary} 
+            />
+            <Text style={[
+              styles.statText, 
+              collection.isLiked && { color: colors.error }
+            ]}>
+              {collection.likeCount || 0}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -212,6 +380,7 @@ export const CollectionDetailScreen = () => {
                   handleRemovePost(selectedPost.postId);
                   setSelectedPost(null);
                }}
+               styles={styles}
              />
            )}
         </View>
@@ -219,132 +388,3 @@ export const CollectionDetailScreen = () => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  header: {
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  editButton: {
-    padding: spacing.xs,
-  },
-  title: {
-    ...typography.h3,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-    flex: 1,
-  },
-  description: {
-    ...typography.body,
-    color: colors.text.secondary,
-    marginBottom: spacing.sm,
-  },
-  stats: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  statText: {
-    ...typography.caption,
-    color: colors.text.tertiary,
-  },
-  listContent: {
-    padding: spacing.md,
-  },
-  columnWrapper: {
-    gap: spacing.md,
-  },
-  gridItem: {
-    marginBottom: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.sm,
-    overflow: 'hidden',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-  },
-  gridPlaceholder: {
-    width: '100%',
-    height: '100%',
-    padding: spacing.xs,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gridCaption: {
-    ...typography.caption,
-    fontSize: 10,
-    color: colors.primaryDark,
-    textAlign: 'center',
-  },
-  gridIconContainer: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: 12,
-    padding: 2,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    alignItems: 'flex-end',
-  },
-  closeButton: {
-    padding: spacing.xs,
-  },
-  fullPostScroll: {
-    padding: spacing.md,
-  },
-  removeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.sm,
-    marginTop: spacing.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.error,
-    borderRadius: borderRadius.sm,
-  },
-  removeButtonText: {
-    ...typography.bodyBold,
-    color: colors.error,
-    marginLeft: spacing.xs,
-  },
-  errorText: {
-    ...typography.body,
-    color: colors.error,
-  },
-  emptyContainer: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    ...typography.body,
-    color: colors.text.secondary,
-  },
-});

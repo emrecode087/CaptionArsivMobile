@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type Query
 import { ApiError } from '@/core/types/api';
 
 import type { Post, PostsListParams, CreatePostRequest, Comment } from '../domain/types';
-import { fetchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment } from './postsApi';
+import { fetchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment, fetchFollowedCategoryPosts } from './postsApi';
 
 export const postsQueryKeys = {
   all: ['posts'] as const,
   list: (params?: PostsListParams) => [...postsQueryKeys.all, params] as const,
+  followed: () => [...postsQueryKeys.all, 'followed'] as const,
   detail: (id: string) => [...postsQueryKeys.all, 'detail', id] as const,
   comments: (postId: string) => [...postsQueryKeys.detail(postId), 'comments'] as const,
 };
@@ -151,3 +152,12 @@ export const useDeleteCommentMutation = () => {
     },
   });
 };
+
+export const useFollowedCategoryPostsQuery = (
+  options?: Omit<UseQueryOptions<Post[], ApiError, Post[], ReturnType<typeof postsQueryKeys.followed>>, 'queryKey' | 'queryFn'>,
+) =>
+  useQuery({
+    queryKey: postsQueryKeys.followed(),
+    queryFn: fetchFollowedCategoryPosts,
+    ...options,
+  });

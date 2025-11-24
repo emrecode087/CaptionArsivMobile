@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, spacing, typography, borderRadius } from '@/core/theme/tokens';
+import { spacing, typography, borderRadius } from '@/core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 import { useCommentsQuery, useCreateCommentMutation, useDeleteCommentMutation } from '../data/usePostsQuery';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 import { Comment } from '../domain/types';
@@ -30,10 +31,127 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const [newComment, setNewComment] = useState('');
+  const { colors } = useTheme();
 
   const { data: comments, isLoading } = useCommentsQuery(postId);
   const createCommentMutation = useCreateCommentMutation();
   const deleteCommentMutation = useDeleteCommentMutation();
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border, // slightly darker
+      backgroundColor: colors.surface,
+    },
+    title: {
+      ...typography.h3,
+      color: colors.text.primary,
+    },
+    closeButton: {
+      padding: spacing.xs,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    listContent: {
+      padding: spacing.md,
+    },
+    emptyContainer: {
+      padding: spacing.xl,
+      alignItems: 'center',
+    },
+    emptyText: {
+      ...typography.body2,
+      color: colors.text.tertiary,
+      textAlign: 'center',
+    },
+    commentItem: {
+      flexDirection: 'row',
+      marginBottom: spacing.lg,
+    },
+    avatar: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: spacing.sm,
+    },
+    avatarText: {
+      ...typography.subtitle2,
+      color: colors.primaryDark,
+    },
+    commentContent: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      padding: spacing.sm,
+      borderRadius: borderRadius.md,
+      borderTopLeftRadius: 0,
+    },
+    commentHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+    },
+    userName: {
+      ...typography.subtitle2,
+      color: colors.text.primary,
+    },
+    date: {
+      ...typography.small,
+      color: colors.text.tertiary,
+    },
+    commentText: {
+      ...typography.body2,
+      color: colors.text.primary,
+    },
+    deleteButton: {
+      padding: spacing.xs,
+      marginLeft: spacing.xs,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      padding: spacing.md,
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    input: {
+      flex: 1,
+      backgroundColor: colors.background,
+      borderRadius: borderRadius.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      paddingRight: spacing.xl,
+      maxHeight: 100,
+      ...typography.body2,
+      color: colors.text.primary,
+    },
+    sendButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginLeft: spacing.sm,
+    },
+    disabledSendButton: {
+      backgroundColor: colors.text.tertiary,
+    },
+  }), [colors]);
 
   const handleSendComment = async () => {
     if (!newComment.trim()) return;
@@ -122,6 +240,7 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
           <TextInput
             style={styles.input}
             placeholder="Yorum yaz..."
+            placeholderTextColor={colors.text.tertiary}
             value={newComment}
             onChangeText={setNewComment}
             multiline
@@ -143,118 +262,3 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.background, // slightly darker
-    backgroundColor: colors.surface,
-  },
-  title: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  closeButton: {
-    padding: spacing.xs,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listContent: {
-    padding: spacing.md,
-  },
-  emptyContainer: {
-    padding: spacing.xl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    ...typography.body2,
-    color: colors.text.tertiary,
-    textAlign: 'center',
-  },
-  commentItem: {
-    flexDirection: 'row',
-    marginBottom: spacing.lg,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-  },
-  avatarText: {
-    ...typography.subtitle2,
-    color: colors.primaryDark,
-  },
-  commentContent: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderTopLeftRadius: 0,
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  userName: {
-    ...typography.subtitle2,
-    color: colors.text.primary,
-  },
-  date: {
-    ...typography.small,
-    color: colors.text.tertiary,
-  },
-  commentText: {
-    ...typography.body2,
-    color: colors.text.primary,
-  },
-  deleteButton: {
-    padding: spacing.xs,
-    marginLeft: spacing.xs,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingRight: spacing.xl,
-    maxHeight: 100,
-    ...typography.body2,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: spacing.sm,
-  },
-  disabledSendButton: {
-    backgroundColor: colors.text.tertiary,
-  },
-});

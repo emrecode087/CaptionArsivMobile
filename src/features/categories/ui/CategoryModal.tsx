@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { colors, spacing, typography, borderRadius } from '@/core/theme/tokens';
+import { spacing, typography, borderRadius } from '@/core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 import type { CreateCategoryRequest, Category } from '../domain/types';
 
 interface CategoryModalProps {
@@ -16,6 +17,7 @@ interface CategoryModalProps {
 export const CategoryModal = ({ visible, onClose, onSubmit, initialData, isLoading }: CategoryModalProps) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const { colors } = useTheme();
 
   useEffect(() => {
     if (visible) {
@@ -23,6 +25,68 @@ export const CategoryModal = ({ visible, onClose, onSubmit, initialData, isLoadi
       setDescription(initialData?.description || '');
     }
   }, [visible, initialData]);
+
+  const styles = useMemo(() => StyleSheet.create({
+    modalContainer: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: borderRadius.lg,
+      borderTopRightRadius: borderRadius.lg,
+      padding: spacing.lg,
+      minHeight: '50%',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.lg,
+    },
+    title: {
+      ...typography.h3,
+      color: colors.text.primary,
+    },
+    form: {
+      gap: spacing.md,
+    },
+    inputGroup: {
+      gap: spacing.xs,
+    },
+    label: {
+      ...typography.bodyBold,
+      color: colors.text.secondary,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.md,
+      padding: spacing.md,
+      fontSize: 16,
+      color: colors.text.primary,
+      backgroundColor: colors.background,
+    },
+    textArea: {
+      height: 100,
+      textAlignVertical: 'top',
+    },
+    submitButton: {
+      backgroundColor: colors.primary,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
+      marginTop: spacing.md,
+    },
+    disabledButton: {
+      opacity: 0.6,
+    },
+    submitButtonText: {
+      ...typography.bodyBold,
+      color: colors.surface,
+    },
+  }), [colors]);
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -58,6 +122,7 @@ export const CategoryModal = ({ visible, onClose, onSubmit, initialData, isLoadi
                 value={name}
                 onChangeText={setName}
                 placeholder="Örn: Spor"
+                placeholderTextColor={colors.text.tertiary}
                 editable={!isLoading}
               />
             </View>
@@ -69,6 +134,7 @@ export const CategoryModal = ({ visible, onClose, onSubmit, initialData, isLoadi
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Kategori açıklaması..."
+                placeholderTextColor={colors.text.tertiary}
                 multiline
                 numberOfLines={3}
                 editable={!isLoading}
@@ -81,7 +147,7 @@ export const CategoryModal = ({ visible, onClose, onSubmit, initialData, isLoadi
               disabled={!name.trim() || isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={colors.surface} />
               ) : (
                 <Text style={styles.submitButtonText}>
                   {initialData ? 'Güncelle' : 'Oluştur'}
@@ -94,64 +160,3 @@ export const CategoryModal = ({ visible, onClose, onSubmit, initialData, isLoadi
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    padding: spacing.lg,
-    minHeight: '50%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  title: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  form: {
-    gap: spacing.md,
-  },
-  inputGroup: {
-    gap: spacing.xs,
-  },
-  label: {
-    ...typography.bodyBold,
-    color: colors.text.secondary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: 16,
-    color: colors.text.primary,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    ...typography.bodyBold,
-    color: '#fff',
-  },
-});

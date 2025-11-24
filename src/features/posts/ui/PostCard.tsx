@@ -1,15 +1,16 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useMemo } from 'react';
 import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Linking, Pressable, Image } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 
 import type { Post } from '../domain/types';
-import { colors, spacing } from '@/core/theme/tokens';
+import { spacing } from '@/core/theme/tokens';
 import { AddToCollectionModal } from '@/features/collections/ui/AddToCollectionModal';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 import { Alert } from 'react-native';
 import { useLikePostMutation, useUnlikePostMutation } from '../data/usePostsQuery';
+import { useTheme } from '@/core/theme/useTheme';
 
 interface PostCardProps {
   post: Post;
@@ -25,6 +26,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
   const [webViewHeight, setWebViewHeight] = useState(400);
   const [isCollectionModalVisible, setIsCollectionModalVisible] = useState(false);
   const { isAuthenticated } = useAuthStore();
+  const { colors } = useTheme();
   
   const shouldShowWebView = isDetailView || isFocused;
   
@@ -33,6 +35,116 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
   
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
   const [likeCount, setLikeCount] = useState(post.likeCount);
+
+  const styles = useMemo(() => StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: CARD_PADDING,
+      marginVertical: 8,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      color: colors.primaryDark,
+      fontWeight: '700',
+      fontSize: 16,
+    },
+    username: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text.primary,
+    },
+    date: {
+      fontSize: 12,
+      color: colors.text.tertiary,
+    },
+    moreButton: {
+      padding: 4,
+    },
+    caption: {
+      fontSize: 15,
+      color: colors.text.primary,
+      lineHeight: 22,
+      marginBottom: 12,
+    },
+    embedContainer: {
+      width: '100%',
+      overflow: 'hidden',
+      backgroundColor: 'transparent',
+      borderRadius: 12,
+    },
+    webview: {
+      backgroundColor: 'transparent',
+    },
+    tagsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 12,
+    },
+    tag: {
+      backgroundColor: colors.surfaceHighlight,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    tagText: {
+      fontSize: 12,
+      color: colors.text.secondary,
+      fontWeight: '500',
+    },
+    footer: {
+      marginTop: 8,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: 20,
+    },
+    actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    actionText: {
+      fontSize: 14,
+      color: colors.text.secondary,
+      fontWeight: '500',
+    },
+    likedText: {
+      color: colors.error,
+    },
+  }), [colors]);
 
   useEffect(() => {
     if (__DEV__) {
@@ -303,113 +415,3 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
 });
 
 PostCard.displayName = 'PostCard';
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: CARD_PADDING,
-    marginVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: colors.primaryDark,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  username: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1a1a',
-  },
-  date: {
-    fontSize: 12,
-    color: '#888',
-  },
-  moreButton: {
-    padding: 4,
-  },
-  caption: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  embedContainer: {
-    width: '100%',
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-  },
-  webview: {
-    backgroundColor: 'transparent',
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  tag: {
-    backgroundColor: '#F0F2F5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  tagText: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-  },
-  footer: {
-    marginTop: 8,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F2F5',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 20,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  actionText: {
-    fontSize: 14,
-    color: colors.text.secondary,
-    fontWeight: '500',
-  },
-  likedText: {
-    color: colors.error,
-  },
-});

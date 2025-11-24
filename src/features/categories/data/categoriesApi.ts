@@ -1,6 +1,6 @@
 import { apiClient } from '@/core/network/apiClient';
 import { ApiError, ApiResult } from '@/core/types/api';
-import type { Category, CategoryListParams, CreateCategoryRequest, UpdateCategoryRequest } from '../domain/types';
+import type { Category, CategoryListParams, CreateCategoryRequest, UpdateCategoryRequest, CategoryFollowStatus } from '../domain/types';
 
 const endpoint = '/Categories';
 
@@ -72,4 +72,32 @@ export const deleteCategory = async (id: string) => {
   }
 
   return payload.data ?? '';
+};
+
+export const followCategory = async (id: string) => {
+  const response = await apiClient.post<ApiResult<CategoryFollowStatus>>(`${endpoint}/${id}/follow`);
+  const payload = response.data;
+
+  if (!payload.isSuccess || !payload.data) {
+    throw new ApiError(payload.message ?? 'Kategori takip edilemedi', {
+      status: response.status,
+      errors: payload.errors ?? null,
+    });
+  }
+
+  return payload.data;
+};
+
+export const unfollowCategory = async (id: string) => {
+  const response = await apiClient.delete<ApiResult<CategoryFollowStatus>>(`${endpoint}/${id}/follow`);
+  const payload = response.data;
+
+  if (!payload.isSuccess || !payload.data) {
+    throw new ApiError(payload.message ?? 'Kategori takibi bırakılamadı', {
+      status: response.status,
+      errors: payload.errors ?? null,
+    });
+  }
+
+  return payload.data;
 };

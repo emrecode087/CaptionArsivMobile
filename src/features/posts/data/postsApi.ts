@@ -124,3 +124,24 @@ export const deleteComment = async ({ postId, commentId }: { postId: string; com
 
   return payload.data ?? '';
 };
+
+export const fetchFollowedCategoryPosts = async () => {
+  if (__DEV__) {
+    console.log('[Posts API] Fetching followed category posts...');
+  }
+  const response = await apiClient.get<ApiResult<Post[]>>(`${endpoint}/feed/categories`);
+  const payload = response.data;
+
+  if (__DEV__) {
+    console.log('[Posts API] Followed posts response success:', payload.isSuccess, 'Count:', payload.data?.length);
+  }
+
+  if (!payload.isSuccess || !payload.data) {
+    throw new ApiError(payload.message ?? 'Takip edilen kategori gönderileri alınamadı', {
+      status: response.status,
+      errors: payload.errors ?? null,
+    });
+  }
+
+  return payload.data;
+};

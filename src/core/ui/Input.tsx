@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,7 +9,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { borderRadius, colors, spacing, typography } from '@/core/theme/tokens';
+import { borderRadius, spacing, typography } from '@/core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -23,6 +24,51 @@ interface InputProps extends TextInputProps {
 export const Input = memo<InputProps>(
   ({ label, error, hint, leftIcon, rightIcon, containerStyle, style, ...props }) => {
     const [isFocused, setIsFocused] = useState(false);
+    const { colors } = useTheme();
+
+    const styles = useMemo(() => StyleSheet.create({
+      container: {
+        gap: spacing.xs,
+      },
+      label: {
+        ...typography.bodyBold,
+        color: colors.text.primary,
+        marginBottom: spacing.xs,
+      },
+      inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.surface,
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        borderRadius: borderRadius.md,
+        paddingHorizontal: spacing.md,
+        gap: spacing.sm,
+      },
+      inputContainerFocused: {
+        borderColor: colors.primary,
+      },
+      inputContainerError: {
+        borderColor: colors.error,
+      },
+      input: {
+        flex: 1,
+        ...typography.body,
+        color: colors.text.primary,
+        paddingVertical: spacing.md,
+      },
+      inputWithLeftIcon: {
+        paddingLeft: 0,
+      },
+      error: {
+        ...typography.body2,
+        color: colors.error,
+      },
+      hint: {
+        ...typography.body2,
+        color: colors.text.secondary,
+      },
+    }), [colors]);
 
     return (
       <View style={[styles.container, containerStyle]}>
@@ -66,6 +112,15 @@ interface PasswordInputProps extends Omit<InputProps, 'rightIcon' | 'secureTextE
 export const PasswordInput = memo<PasswordInputProps>(({ onToggleVisibility, ...props }) => {
   const [isVisible, setIsVisible] = useState(false);
 
+  const styles = StyleSheet.create({
+    iconButton: {
+      padding: spacing.xs,
+    },
+    iconText: {
+      fontSize: 20,
+    },
+  });
+
   const toggleVisibility = () => {
     const newState = !isVisible;
     setIsVisible(newState);
@@ -87,52 +142,4 @@ export const PasswordInput = memo<PasswordInputProps>(({ onToggleVisibility, ...
 
 PasswordInput.displayName = 'PasswordInput';
 
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.xs,
-  },
-  label: {
-    ...typography.bodyBold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-  },
-  inputContainerFocused: {
-    borderColor: colors.primary,
-  },
-  inputContainerError: {
-    borderColor: colors.error,
-  },
-  input: {
-    flex: 1,
-    ...typography.body,
-    color: colors.text.primary,
-    paddingVertical: spacing.md,
-  },
-  inputWithLeftIcon: {
-    paddingLeft: 0,
-  },
-  error: {
-    ...typography.small,
-    color: colors.error,
-  },
-  hint: {
-    ...typography.small,
-    color: colors.text.secondary,
-  },
-  iconButton: {
-    padding: spacing.xs,
-  },
-  iconText: {
-    fontSize: 20,
-  },
-});
+

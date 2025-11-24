@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useCreateCollectionMutation, useUpdateCollectionMutation } from '../data/useCollectionsQuery';
-import { colors, spacing, borderRadius, typography } from '../../../core/theme/tokens';
+import { spacing, borderRadius, typography } from '../../../core/theme/tokens';
+import { useTheme } from '@/core/theme/useTheme';
 import { Collection } from '../domain/types';
 
 interface CollectionModalProps {
@@ -15,6 +16,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({ visible, onClo
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPrivate, setIsPrivate] = useState(true);
+  const { colors } = useTheme();
   
   const createCollectionMutation = useCreateCollectionMutation();
   const updateCollectionMutation = useUpdateCollectionMutation();
@@ -22,7 +24,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({ visible, onClo
   useEffect(() => {
     if (collection) {
       setName(collection.name);
-      setDescription(collection.description);
+      setDescription(collection.description || '');
       setIsPrivate(collection.isPrivate);
     } else {
       setName('');
@@ -30,6 +32,72 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({ visible, onClo
       setIsPrivate(true);
     }
   }, [collection, visible]);
+
+  const styles = useMemo(() => StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)', // Overlay color
+      justifyContent: 'flex-end',
+    },
+    content: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: borderRadius.lg,
+      borderTopRightRadius: borderRadius.lg,
+      padding: spacing.md,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.md,
+    },
+    title: {
+      ...typography.h3,
+      color: colors.text.primary,
+    },
+    form: {
+      gap: spacing.sm,
+    },
+    label: {
+      ...typography.bodyBold,
+      color: colors.text.primary,
+      marginBottom: spacing.xs,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: borderRadius.sm,
+      padding: spacing.sm,
+      ...typography.body,
+      color: colors.text.primary,
+      backgroundColor: colors.background,
+    },
+    textArea: {
+      height: 80,
+      textAlignVertical: 'top',
+    },
+    checkboxContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: spacing.sm,
+    },
+    checkboxLabel: {
+      ...typography.body,
+      color: colors.text.primary,
+      marginLeft: spacing.sm,
+    },
+    createButton: {
+      backgroundColor: colors.primary,
+      padding: spacing.md,
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
+      marginTop: spacing.sm,
+    },
+    createButtonText: {
+      ...typography.bodyBold,
+      color: colors.surface,
+    },
+  }), [colors]);
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -83,6 +151,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({ visible, onClo
             <TextInput
               style={styles.input}
               placeholder="Collection Name"
+              placeholderTextColor={colors.text.tertiary}
               value={name}
               onChangeText={setName}
               autoFocus={!collection}
@@ -92,6 +161,7 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({ visible, onClo
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Description (optional)"
+              placeholderTextColor={colors.text.tertiary}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -127,67 +197,3 @@ export const CollectionModal: React.FC<CollectionModalProps> = ({ visible, onClo
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  content: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    padding: spacing.md,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  title: {
-    ...typography.h3,
-    color: colors.text.primary,
-  },
-  form: {
-    gap: spacing.sm,
-  },
-  label: {
-    ...typography.bodyBold,
-    color: colors.text.primary,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.sm,
-    padding: spacing.sm,
-    ...typography.body,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.sm,
-  },
-  checkboxLabel: {
-    ...typography.body,
-    color: colors.text.primary,
-    marginLeft: spacing.sm,
-  },
-  createButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  createButtonText: {
-    ...typography.bodyBold,
-    color: colors.surface,
-  },
-});
