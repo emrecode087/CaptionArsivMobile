@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Animated, StyleProp, ViewStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMyCollectionsQuery, usePublicCollectionsQuery } from '../data/useCollectionsQuery';
 import { CollectionCard } from '../ui/CollectionCard';
 import { spacing, typography, borderRadius } from '../../../core/theme/tokens';
@@ -11,9 +12,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { CollectionsScreenNavigationProp } from '../navigation/types';
 
 type TabType = 'my' | 'discover';
+interface CollectionsScreenProps {
+  onScroll?: any;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+}
 
-export const CollectionsScreen = () => {
+export const CollectionsScreen = ({ onScroll, contentContainerStyle }: CollectionsScreenProps) => {
   const navigation = useNavigation<CollectionsScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { isAuthenticated } = useAuthStore();
   const { colors } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('my');
@@ -30,17 +36,6 @@ export const CollectionsScreen = () => {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    header: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
-      backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    headerTitle: {
-      ...typography.h2,
-      color: colors.text.primary,
     },
     tabContainer: {
       flexDirection: 'row',
@@ -109,10 +104,13 @@ export const CollectionsScreen = () => {
       ...typography.body,
       color: colors.text.secondary,
     },
-    fab: {
+    fabContainer: {
       position: 'absolute',
-      bottom: spacing.xl,
       right: spacing.xl,
+      // bottom will be set dynamically
+      zIndex: 100,
+    },
+    fab: {
       width: 56,
       height: 56,
       borderRadius: 28,
@@ -126,7 +124,6 @@ export const CollectionsScreen = () => {
       shadowRadius: 4,
     },
   }), [colors]);
-
   const renderContent = () => {
     if (!isAuthenticated && activeTab === 'my') {
       return (
@@ -159,7 +156,7 @@ export const CollectionsScreen = () => {
     const collections = data?.data || [];
 
     return (
-      <FlatList
+      <Animated.FlatList
         data={collections}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
@@ -168,7 +165,7 @@ export const CollectionsScreen = () => {
             onPress={() => navigation.navigate('CollectionDetail', { id: item.id, name: item.name })}
           />
         )}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, contentContainerStyle]}
         refreshControl={
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />
         }
@@ -182,16 +179,14 @@ export const CollectionsScreen = () => {
             )}
           </View>
         }
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       />
     );
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Koleksiyonlar</Text>
-      </View>
-
       <View style={styles.tabContainer}>
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'my' && styles.activeTab]}
@@ -211,12 +206,21 @@ export const CollectionsScreen = () => {
       
       {/* FAB only visible on My Collections tab */}
       {activeTab === 'my' && isAuthenticated && (
-        <TouchableOpacity 
-          style={styles.fab}
-          onPress={() => setIsCreateModalVisible(true)}
+        <View 
+          style={[
+            styles.fabContainer,
+            {
+              bottom: insets.bottom + 90, // Fixed position above banner
+            }
+          ]}
         >
-          <Ionicons name="add" size={32} color={colors.surface} />
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.fab}
+            onPress={() => setIsCreateModalVisible(true)}
+          >
+            <Ionicons name="add" size={32} color={colors.surface} />
+          </TouchableOpacity>
+        </View>
       )}
 
       <CollectionModal

@@ -36,11 +36,7 @@ export const ProfileScreen = memo(() => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profilim</Text>
-      </View>
-
+    <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
@@ -114,7 +110,7 @@ export const ProfileScreen = memo(() => {
           />
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 });
 
@@ -124,17 +120,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerTitle: {
-    ...typography.h3,
-    color: colors.text.primary,
   },
   content: {
     flex: 1,
