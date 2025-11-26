@@ -7,9 +7,11 @@ import { RootNavigator } from '@/navigation/RootNavigator';
 import { navigationRef } from '@/navigation/navigationRef';
 import { useTheme } from '@/core/theme/useTheme';
 import { lightColors, darkColors } from '@/core/theme/tokens';
+import { useNotificationSetup } from '@/features/notifications/hooks/useNotificationSetup';
 
 function AppContent() {
   const { isDark } = useTheme();
+  useNotificationSetup();
 
   const navigationTheme = {
     ...(isDark ? DarkTheme : DefaultTheme),

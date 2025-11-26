@@ -42,3 +42,8 @@ yarn-error.*
 /android
 
 .expo/
+
+# Firebase & Secrets
+google-services.json
+GoogleService-Info.plist
+*.keystore

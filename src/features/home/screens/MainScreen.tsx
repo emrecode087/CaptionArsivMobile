@@ -143,7 +143,9 @@ export const MainScreen = () => {
           }
         ]}
       >
-        <CustomHeader />
+        <CustomHeader 
+          onNotificationPress={() => navigation.navigate('Notifications')}
+        />
         <SubMenu activeTab={activeTab} onTabPress={setActiveTab} />
       </Animated.View>
 

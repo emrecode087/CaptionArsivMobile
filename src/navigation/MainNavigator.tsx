@@ -14,6 +14,7 @@ const Stack = createStackNavigator();
 
 import { CreatePostScreen } from '@/features/posts/screens/CreatePostScreen';
 import { PostDetailScreen } from '@/features/posts/screens/PostDetailScreen';
+import { NotificationsScreen } from '@/features/notifications/screens/NotificationsScreen';
 
 export const MainNavigator = memo(() => {
   const { colors } = useTheme();
@@ -22,6 +23,7 @@ export const MainNavigator = memo(() => {
     <View style={{ flex: 1 }}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainScreen} />
+        <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="CreatePost" component={CreatePostScreen} />
         <Stack.Screen 
           name="Profile" 
