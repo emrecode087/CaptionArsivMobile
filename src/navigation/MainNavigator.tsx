@@ -15,6 +15,7 @@ const Stack = createStackNavigator();
 import { CreatePostScreen } from '@/features/posts/screens/CreatePostScreen';
 import { PostDetailScreen } from '@/features/posts/screens/PostDetailScreen';
 import { NotificationsScreen } from '@/features/notifications/screens/NotificationsScreen';
+import SettingsScreen from '@/features/profile/screens/SettingsScreen';
 
 export const MainNavigator = memo(() => {
   const { colors } = useTheme();
@@ -87,6 +88,16 @@ export const MainNavigator = memo(() => {
             headerStyle: {
               backgroundColor: colors.surface,
             },
+          }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            headerShown: true,
+            title: 'Ayarlar',
+            headerTintColor: colors.text.primary,
+            headerStyle: { backgroundColor: colors.surface },
           }}
         />
       </Stack.Navigator>

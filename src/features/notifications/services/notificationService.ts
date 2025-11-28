@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { notificationsApi } from '../data/notificationsApi';
+import { logger } from '@/core/utils/logger';
 
 // Configure how notifications should be handled when the app is in foreground
 Notifications.setNotificationHandler({
@@ -38,7 +39,7 @@ class NotificationService {
       }
       
       if (finalStatus !== 'granted') {
-        console.log('Failed to get push token for push notification!');
+        logger.warn('Failed to get push token for push notification!');
         return;
       }
 
@@ -48,9 +49,9 @@ class NotificationService {
       try {
         const tokenData = await Notifications.getDevicePushTokenAsync();
         token = tokenData.data;
-        console.log('Device Push Token:', token);
+        logger.log('Device Push Token:', token);
       } catch (e) {
-        console.error('Error getting device push token:', e);
+        logger.error('Error getting device push token:', e);
       }
     } else {
       console.log('Must use physical device for Push Notifications');
@@ -64,7 +65,7 @@ class NotificationService {
       const token = await this.registerForPushNotificationsAsync();
       
       if (!token) {
-        console.log('No token received, skipping registration');
+        logger.warn('No token received, skipping registration');
         return;
       }
 
@@ -72,16 +73,15 @@ class NotificationService {
         fcmToken: token,
         deviceType: Platform.OS === 'ios' ? 'iOS' : 'Android',
       });
-
-      console.log('Device registered for notifications successfully');
+      logger.log('Device registered for notifications successfully');
     } catch (error) {
-      console.error('Error registering device for notifications:', error);
+      logger.error('Error registering device for notifications:', error);
     }
   }
 
   setupForegroundHandler(onNotificationReceived?: (notification: Notifications.Notification) => void) {
     this.notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Foreground notification received:', notification);
+      logger.log('Foreground notification received:', notification);
       if (onNotificationReceived) {
         onNotificationReceived(notification);
       }
@@ -96,7 +96,7 @@ class NotificationService {
 
   setupResponseHandler(onNotificationResponse: (response: Notifications.NotificationResponse) => void) {
     this.responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification response received:', response);
+      logger.log('Notification response received:', response);
       onNotificationResponse(response);
     });
 

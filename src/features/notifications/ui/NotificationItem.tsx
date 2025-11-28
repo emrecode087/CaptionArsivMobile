@@ -10,7 +10,7 @@ interface NotificationItemProps {
   onPress: (item: NotificationItemType) => void;
 }
 
-export const NotificationItem = ({ item, onPress }: NotificationItemProps) => {
+const NotificationItemComponent = ({ item, onPress }: NotificationItemProps) => {
   const { colors } = useTheme();
 
   const getIcon = () => {
@@ -80,6 +80,9 @@ export const NotificationItem = ({ item, onPress }: NotificationItemProps) => {
     </TouchableOpacity>
   );
 };
+
+export const NotificationItem = React.memo(NotificationItemComponent);
+NotificationItem.displayName = 'NotificationItem';
 
 const styles = StyleSheet.create({
   container: {

@@ -1,0 +1,8 @@
+{
+  "build": {
+    "development": {
+       "environment": "development"
+      }
+    }
+  }
+

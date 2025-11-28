@@ -1,4 +1,5 @@
 import { memo, useState, useEffect, useMemo } from 'react';
+import { logger } from '@/core/utils/logger';
 import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Linking, Pressable, Image } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -147,9 +148,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
   }), [colors]);
 
   useEffect(() => {
-    if (__DEV__) {
-      console.log('[PostCard] Post updated - id:', post.id, 'isLikedByCurrentUser:', post.isLikedByCurrentUser, 'likeCount:', post.likeCount);
-    }
+    logger.log('[PostCard] Post updated - id:', post.id, 'isLikedByCurrentUser:', post.isLikedByCurrentUser, 'likeCount:', post.likeCount);
     setIsLiked(post.isLikedByCurrentUser);
     setLikeCount(post.likeCount);
   }, [post.isLikedByCurrentUser, post.likeCount, post.id]);

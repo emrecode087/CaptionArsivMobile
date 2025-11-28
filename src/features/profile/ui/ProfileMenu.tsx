@@ -136,7 +136,7 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
 
               <View style={styles.divider} />
 
-              <TouchableOpacity style={styles.menuItem} onPress={() => { /* Navigate to Settings */ onClose(); }}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('Settings')}>
                 <Ionicons name="settings-outline" size={24} color={colors.text.primary} />
                 <Text style={styles.menuText}>Ayarlar</Text>
                 <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />

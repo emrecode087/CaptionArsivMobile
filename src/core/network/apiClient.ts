@@ -8,6 +8,7 @@ import axios, {
 import { appConfig } from '../config/appConfig';
 import { ApiError, ApiResult } from '../types/api';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
+import { logger } from '@/core/utils/logger';
 
 type TokenProvider = () => string | null | Promise<string | null>;
 
@@ -68,9 +69,7 @@ const toRelativeUrl = (url?: string) => {
     const parsed = new URL(url);
     return `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
   } catch (parseError) {
-    if (__DEV__) {
-      console.warn('[API] Failed to parse absolute URL for fallback retry.', parseError);
-    }
+    logger.warn('[API] Failed to parse absolute URL for fallback retry.', parseError);
     return url;
   }
 };
@@ -82,7 +81,7 @@ const logRequest = (config: InternalAxiosRequestConfig) => {
 
   const method = config.method?.toUpperCase() ?? 'GET';
   const fallbackTag = config.metadata?.usedFallback ? ' [fallback]' : '';
-  console.log(`[API] -> ${method} ${buildRequestUrl(config)}${fallbackTag}`);
+  logger.log(`[API] -> ${method} ${buildRequestUrl(config)}${fallbackTag}`);
 };
 
 const logResponse = (config: InternalAxiosRequestConfig, status: number) => {
@@ -93,7 +92,7 @@ const logResponse = (config: InternalAxiosRequestConfig, status: number) => {
   const duration = Date.now() - (config.metadata?.startTime ?? Date.now());
   const method = config.method?.toUpperCase() ?? 'GET';
   const fallbackTag = config.metadata?.usedFallback ? ' [fallback]' : '';
-  console.log(`[API] <- ${status} ${method} ${buildRequestUrl(config)}${fallbackTag} (${duration}ms)`);
+  logger.log(`[API] <- ${status} ${method} ${buildRequestUrl(config)}${fallbackTag} (${duration}ms)`);
 };
 
 const logError = (config: InternalAxiosRequestConfig | undefined, error: AxiosError, status?: number) => {
@@ -108,7 +107,7 @@ const logError = (config: InternalAxiosRequestConfig | undefined, error: AxiosEr
   const durationLabel = duration === null ? '' : ` (${duration}ms)`;
   const fallbackTag = config?.metadata?.usedFallback ? ' [fallback]' : '';
 
-  console.warn(`[API] !! ${statusLabel} ${method} ${url}${fallbackTag} - ${error.message}${durationLabel}`);
+  logger.warn(`[API] !! ${statusLabel} ${method} ${url}${fallbackTag} - ${error.message}${durationLabel}`);
 };
 
 const apiClient: AxiosInstance = axios.create({
