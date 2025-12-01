@@ -26,13 +26,15 @@ export const PostDetailScreen = () => {
   const route = useRoute<any>();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { postId } = route.params;
+  const { postId, initialPost } = route.params;
   const { user } = useAuthStore();
   const { colors } = useTheme();
 
   const [newComment, setNewComment] = useState('');
 
-  const { data: post, isLoading: isPostLoading } = usePostDetailQuery(postId);
+  const { data: post, isLoading: isPostLoading } = usePostDetailQuery(postId, {
+    initialData: initialPost,
+  });
   const { data: comments, isLoading: isCommentsLoading } = useCommentsQuery(postId);
   
   const createCommentMutation = useCreateCommentMutation();

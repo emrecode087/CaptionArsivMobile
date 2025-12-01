@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useMemo } from 'react';
+import { memo, useState, useEffect, useMemo, useRef } from 'react';
 import { logger } from '@/core/utils/logger';
 import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Linking, Pressable, Image } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 import { Alert } from 'react-native';
 import { useLikePostMutation, useUnlikePostMutation } from '../data/usePostsQuery';
 import { useTheme } from '@/core/theme/useTheme';
+import { CommentsModal } from './CommentsModal';
 
 interface PostCardProps {
   post: Post;
@@ -23,13 +24,15 @@ const CARD_PADDING = 16;
 
 export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => {
   const navigation = useNavigation<any>();
-  const isFocused = useIsFocused();
+  const isScreenFocused = useIsFocused();
   const [webViewHeight, setWebViewHeight] = useState(400);
+  const [isLoadingEmbed, setIsLoadingEmbed] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [isCollectionModalVisible, setIsCollectionModalVisible] = useState(false);
+  const [isCommentsVisible, setIsCommentsVisible] = useState(false);
   const { isAuthenticated } = useAuthStore();
   const { colors } = useTheme();
-  
-  const shouldShowWebView = isDetailView || isFocused;
+  const webViewRef = useRef<any>(null);
   
   const likeMutation = useLikePostMutation();
   const unlikeMutation = useUnlikePostMutation();
@@ -96,11 +99,25 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
     embedContainer: {
       width: '100%',
       overflow: 'hidden',
-      backgroundColor: 'transparent',
+      backgroundColor: colors.surfaceHighlight,
       borderRadius: 12,
     },
     webview: {
       backgroundColor: 'transparent',
+    },
+    loadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      backgroundColor: colors.surfaceHighlight,
+    },
+    loadingImage: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    playIcon: {
+      position: 'absolute',
+      alignSelf: 'center',
     },
     tagsContainer: {
       flexDirection: 'row',
@@ -153,6 +170,30 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
     setLikeCount(post.likeCount);
   }, [post.isLikedByCurrentUser, post.likeCount, post.id]);
 
+  const pauseEmbeddedMedia = () => {
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        window.__pauseMedia && window.__pauseMedia();
+        true;
+      `);
+    }
+  };
+
+  useEffect(() => {
+    if (!isScreenFocused) {
+      pauseEmbeddedMedia();
+    }
+  }, [isScreenFocused]);
+
+  const thumbnailUrl = useMemo(() => {
+    if (post.thumbnailUrl) return post.thumbnailUrl;
+    if (post.embedHtml) {
+      const match = post.embedHtml.match(/<img[^>]+src="([^">]+)"/);
+      if (match) return match[1];
+    }
+    return null;
+  }, [post.thumbnailUrl, post.embedHtml]);
+
   const handleLike = () => {
     if (!isAuthenticated) {
       Alert.alert('Giriş Yapmalısınız', 'Beğenmek için lütfen giriş yapın.');
@@ -180,22 +221,43 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
     }
   };
 
-  const handlePress = () => {
-    if (!isDetailView) {
-      navigation.navigate('PostDetail', { postId: post.id });
-    }
-  };
+  const handlePress = () => {};
 
 
 
   const injectedJavaScript = `
     (function() {
       function sendHeight() {
-        // Get the height of the twitter-tweet element if it exists, otherwise body
         const tweet = document.querySelector('.twitter-tweet');
         const height = tweet ? tweet.getBoundingClientRect().height : document.documentElement.scrollHeight;
         window.ReactNativeWebView.postMessage(JSON.stringify({ height }));
       }
+
+      window.__pauseMedia = function() {
+        try {
+          const media = document.querySelectorAll('video, audio');
+          media.forEach(m => { if (m.pause) { m.pause(); } m.muted = true; });
+        } catch (_) {}
+        try {
+          const frames = document.querySelectorAll('iframe');
+          frames.forEach(f => {
+            try {
+              const doc = f.contentDocument || f.contentWindow?.document;
+              if (doc) {
+                const innerMedia = doc.querySelectorAll('video, audio');
+                innerMedia.forEach(m => { if (m.pause) { m.pause(); } m.muted = true; });
+              }
+            } catch (_) {}
+          });
+        } catch (_) {}
+      };
+
+      // Accept pause commands via custom event
+      window.addEventListener('message', function(event) {
+        if (event && event.data === 'PAUSE_MEDIA') {
+          window.__pauseMedia();
+        }
+      });
 
       // Send initial height
       sendHeight();
@@ -208,7 +270,6 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
         attributes: true 
       });
 
-      // Fallback for delayed content
       setTimeout(sendHeight, 1000);
       setTimeout(sendHeight, 2000);
       setTimeout(sendHeight, 3000);
@@ -216,7 +277,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
     true;
   `;
 
-  const htmlContent = `
+  const htmlContent = useMemo(() => `
     <!DOCTYPE html>
     <html>
       <head>
@@ -258,7 +319,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
         <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
       </body>
     </html>
-  `;
+  `, [post.embedHtml]);
 
   const handleMessage = (event: any) => {
     try {
@@ -276,6 +337,8 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
       console.warn('Failed to parse WebView message', error);
     }
   };
+
+  const showPosterOverlay = (!isScreenFocused && !isDetailView) || isLoadingEmbed || !hasLoadedOnce;
 
   return (
     <View style={styles.card}>
@@ -300,48 +363,59 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
 
       {post.embedHtml && (
         <View style={[styles.embedContainer, { height: webViewHeight }]}>
-          {shouldShowWebView ? (
-            <WebView
-              source={{ html: htmlContent, baseUrl: 'https://twitter.com' }}
-              style={[styles.webview, { opacity: 0.99 }]}
-              scrollEnabled={false}
-              showsVerticalScrollIndicator={false}
-              showsHorizontalScrollIndicator={false}
-              injectedJavaScript={injectedJavaScript}
-              onMessage={handleMessage}
-              javaScriptEnabled
-              domStorageEnabled
-              startInLoadingState={false}
-              scalesPageToFit={false}
-              bounces={false}
-              allowsInlineMediaPlayback={true}
-              mediaPlaybackRequiresUserAction={false}
-              originWhitelist={['*']}
-              mixedContentMode="always"
-              onShouldStartLoadWithRequest={(request) => {
-                const { url } = request;
-                
-                // Allow standard web content to load
-                if (url.startsWith('http') || url.startsWith('https') || url.startsWith('about:blank')) {
-                  // If it's a user click (e.g. "Watch on X"), open in system browser
-                  if (request.navigationType === 'click') {
-                    Linking.openURL(url).catch(() => {});
-                    return false;
-                  }
-                  return true;
+          <WebView
+            ref={webViewRef}
+            source={{ html: htmlContent, baseUrl: 'https://twitter.com' }}
+            style={[styles.webview, { opacity: 0.99 }]}
+            scrollEnabled={false}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
+            injectedJavaScript={injectedJavaScript}
+            onMessage={handleMessage}
+            javaScriptEnabled
+            domStorageEnabled
+            startInLoadingState
+            cacheEnabled
+            incognito={false}
+            userAgent="CaptionArsivApp/1.0"
+            scalesPageToFit={false}
+            bounces={false}
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+            originWhitelist={['*']}
+            mixedContentMode="always"
+            onLoadStart={() => setIsLoadingEmbed(true)}
+            onLoadEnd={() => {
+              setIsLoadingEmbed(false);
+              setHasLoadedOnce(true);
+            }}
+            onShouldStartLoadWithRequest={(request) => {
+              const { url } = request;
+              
+              // Allow standard web content to load
+              if (url.startsWith('http') || url.startsWith('https') || url.startsWith('about:blank')) {
+                // If it's a user click (e.g. "Watch on X"), open in system browser
+                if (request.navigationType === 'click') {
+                  Linking.openURL(url).catch(() => {});
+                  return false;
                 }
+                return true;
+              }
 
-                // Handle custom schemes (e.g. twitter://) by opening in system handler
-                Linking.openURL(url).catch(() => {});
-                return false;
-              }}
-            />
-          ) : (
-            <View style={{ width: '100%', height: '100%', backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
-              {post.thumbnailUrl && (
-                <Image source={{ uri: post.thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              // Handle custom schemes (e.g. twitter://) by opening in system handler
+              Linking.openURL(url).catch(() => {});
+              return false;
+            }}
+          />
+
+          {showPosterOverlay && (
+            <View style={styles.loadingOverlay} pointerEvents="none">
+              {thumbnailUrl ? (
+                <Image source={{ uri: thumbnailUrl }} style={styles.loadingImage} resizeMode="cover" />
+              ) : (
+                <View style={[styles.loadingImage, { backgroundColor: colors.surfaceHighlight }]} />
               )}
-              <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.8)" />
+              <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.8)" style={styles.playIcon} />
             </View>
           )}
         </View>
@@ -376,7 +450,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
 
             <TouchableOpacity 
               style={styles.actionButton}
-              onPress={() => navigation.navigate('PostDetail', { postId: post.id })}
+              onPress={() => setIsCommentsVisible(true)}
             >
               <Ionicons name="chatbubble-outline" size={22} color={colors.text.secondary} />
               <Text style={styles.actionText}>{post.commentCount}</Text>
@@ -409,6 +483,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
         onClose={() => setIsCollectionModalVisible(false)}
         postId={post.id}
       />
+      <CommentsModal visible={isCommentsVisible} onClose={() => setIsCommentsVisible(false)} postId={post.id} />
     </View>
   );
 });

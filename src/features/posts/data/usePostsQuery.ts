@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type Query
 import { ApiError } from '@/core/types/api';
 
 import type { Post, PostsListParams, CreatePostRequest, Comment } from '../domain/types';
-import { fetchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment, fetchFollowedCategoryPosts } from './postsApi';
+import { fetchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment, fetchFollowedCategoryPosts, fetchLikedPosts } from './postsApi';
 
 export const postsQueryKeys = {
   all: ['posts'] as const,
   list: (params?: PostsListParams) => [...postsQueryKeys.all, params] as const,
+  liked: () => [...postsQueryKeys.all, 'liked'] as const,
   followed: () => [...postsQueryKeys.all, 'followed'] as const,
   detail: (id: string) => [...postsQueryKeys.all, 'detail', id] as const,
   comments: (postId: string) => [...postsQueryKeys.detail(postId), 'comments'] as const,
@@ -87,6 +88,8 @@ export const useLikePostMutation = () => {
         isLikedByCurrentUser: true,
         likeCount: data.totalLikes,
       }));
+
+      queryClient.invalidateQueries({ queryKey: postsQueryKeys.liked() });
     },
     onError: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: postsQueryKeys.all });
@@ -112,6 +115,8 @@ export const useUnlikePostMutation = () => {
         isLikedByCurrentUser: false,
         likeCount: data.totalLikes,
       }));
+
+      queryClient.invalidateQueries({ queryKey: postsQueryKeys.liked() });
     },
     onError: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: postsQueryKeys.all });
@@ -159,5 +164,14 @@ export const useFollowedCategoryPostsQuery = (
   useQuery({
     queryKey: postsQueryKeys.followed(),
     queryFn: fetchFollowedCategoryPosts,
+    ...options,
+  });
+
+export const useLikedPostsQuery = (
+  options?: Omit<UseQueryOptions<Post[], ApiError, Post[], ReturnType<typeof postsQueryKeys.liked>>, 'queryKey' | 'queryFn'>,
+) =>
+  useQuery({
+    queryKey: postsQueryKeys.liked(),
+    queryFn: fetchLikedPosts,
     ...options,
   });

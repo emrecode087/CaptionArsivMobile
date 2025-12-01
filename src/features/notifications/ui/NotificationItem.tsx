@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/core/theme/useTheme';
 import { spacing, typography, borderRadius } from '@/core/theme/tokens';
+import { resolveNotificationCategory } from '../domain/notificationType';
 import { NotificationItem as NotificationItemType } from '../domain/types';
 
 interface NotificationItemProps {
@@ -12,21 +13,18 @@ interface NotificationItemProps {
 
 const NotificationItemComponent = ({ item, onPress }: NotificationItemProps) => {
   const { colors } = useTheme();
+  const category = resolveNotificationCategory(item);
 
   const getIcon = () => {
-    // Map numeric types to icons
-    // Assuming: 0=PostLike, 1=PostComment, 2=Follow, 3=System (Adjust based on backend enum)
-    switch (item.type) {
-      case 0: // PostLike
-        return <Ionicons name="heart" size={24} color={colors.error} />;
-      case 1: // PostComment
-        return <Ionicons name="chatbubble" size={24} color={colors.info} />;
-      case 2: // Follow
-        return <Ionicons name="person-add" size={24} color={colors.primary} />;
-      case 3: // System
-        return <Ionicons name="information-circle" size={24} color={colors.warning} />;
+    switch (category) {
+      case 'postLike':
+        return <Ionicons name="heart" size={20} color={colors.error} />;
+      case 'postComment':
+        return <Ionicons name="chatbubble-ellipses" size={20} color={colors.info} />;
+      case 'follow':
+        return <Ionicons name="person-add" size={20} color={colors.primary} />;
       default:
-        return <Ionicons name="notifications" size={24} color={colors.text.secondary} />;
+        return <Ionicons name="notifications" size={20} color={colors.text.secondary} />;
     }
   };
 
@@ -46,7 +44,10 @@ const NotificationItemComponent = ({ item, onPress }: NotificationItemProps) => 
     <TouchableOpacity 
       style={[
         styles.container, 
-        { backgroundColor: item.isRead ? colors.surface : colors.surfaceHighlight }
+        { 
+          backgroundColor: item.isRead ? colors.surface : colors.surfaceHighlight,
+          shadowColor: colors.shadow,
+        }
       ]}
       onPress={() => onPress(item)}
     >
@@ -54,7 +55,7 @@ const NotificationItemComponent = ({ item, onPress }: NotificationItemProps) => 
         {item.imageUrl ? (
           <Image source={{ uri: item.imageUrl }} style={styles.avatar} />
         ) : (
-          <View style={[styles.placeholderIcon, { backgroundColor: colors.background }]}>
+          <View style={[styles.placeholderIcon, { backgroundColor: colors.surfaceHighlight }]}>
             {getIcon()}
           </View>
         )}
@@ -87,24 +88,30 @@ NotificationItem.displayName = 'NotificationItem';
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    padding: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    marginHorizontal: spacing.xs,
+    marginVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 1,
   },
   iconContainer: {
-    marginRight: spacing.md,
+    marginRight: spacing.sm,
     position: 'relative',
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: borderRadius.lg,
   },
   placeholderIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -112,9 +119,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -4,
     right: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 2,
@@ -122,21 +129,24 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   body: {
     ...typography.body2,
-    marginBottom: 4,
+    marginBottom: 2,
+    textAlign: 'left',
   },
   unreadText: {
     fontWeight: 'bold',
   },
   time: {
-    ...typography.caption,
+    ...typography.small,
+    textAlign: 'left',
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     marginLeft: spacing.sm,
   },
 });

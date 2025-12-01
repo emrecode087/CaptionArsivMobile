@@ -145,3 +145,17 @@ export const fetchFollowedCategoryPosts = async () => {
 
   return payload.data;
 };
+
+export const fetchLikedPosts = async () => {
+  const response = await apiClient.get<ApiResult<Post[]>>(`${endpoint}/liked`);
+  const payload = response.data;
+
+  if (!payload.isSuccess || !payload.data) {
+    throw new ApiError(payload.message ?? 'Beğendiğiniz gönderiler alınamadı', {
+      status: response.status,
+      errors: payload.errors ?? null,
+    });
+  }
+
+  return payload.data;
+};

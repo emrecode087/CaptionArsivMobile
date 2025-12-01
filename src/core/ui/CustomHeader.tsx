@@ -6,6 +6,7 @@ import { spacing, typography } from '@/core/theme/tokens';
 import { useUIStore } from '@/core/stores/useUIStore';
 import { useTheme } from '@/core/theme/useTheme';
 import { ProfileMenu } from '@/features/profile/ui/ProfileMenu';
+import { useUnreadNotificationsQuery } from '@/features/notifications/data/useNotificationsQuery';
 
 interface CustomHeaderProps {
   onSearchPress?: () => void;
@@ -16,6 +17,8 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
   const insets = useSafeAreaInsets();
   const { toggleSidebar } = useUIStore();
   const { colors } = useTheme();
+  const { data: unreadCount } = useUnreadNotificationsQuery();
+  const hasUnread = (unreadCount ?? 0) > 0;
   const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
 
   const styles = useMemo(() => StyleSheet.create({
@@ -56,6 +59,23 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
     iconButton: {
       padding: spacing.xs,
     },
+    badgeContainer: {
+      position: 'absolute',
+      top: -2,
+      right: -2,
+      minWidth: 16,
+      paddingHorizontal: 4,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: colors.error,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeText: {
+      color: colors.surface,
+      fontSize: 10,
+      fontWeight: '700',
+    },
   }), [colors]);
 
   return (
@@ -83,6 +103,13 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
             </TouchableOpacity>
             <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
               <Ionicons name="notifications-outline" size={24} color={colors.text.primary} />
+              {hasUnread && (
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount && unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setIsProfileMenuVisible(true)} style={styles.iconButton}>
               <Ionicons name="person-circle-outline" size={28} color={colors.text.primary} />

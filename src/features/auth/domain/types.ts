@@ -29,6 +29,12 @@ export interface UserDto {
   lastLoginAt: string;
   status: string;
   likesArePublic: boolean;
+  autoFollowOnReply?: boolean;
+  profileIsPrivate?: boolean;
+  pushNotificationsEnabled?: boolean;
+  autoplayVideos?: boolean;
+  theme?: 'light' | 'dark' | 'system' | null;
+  hideFlaggedComments?: boolean;
   createdAt: string;
   updatedAt: string;
   roles: string[];

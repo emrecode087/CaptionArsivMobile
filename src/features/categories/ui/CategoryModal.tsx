@@ -84,7 +84,7 @@ export const CategoryModal = ({ visible, onClose, onSubmit, initialData, isLoadi
     },
     submitButtonText: {
       ...typography.bodyBold,
-      color: colors.surface,
+      color: colors.text.inverse,
     },
   }), [colors]);
 
@@ -110,7 +110,7 @@ export const CategoryModal = ({ visible, onClose, onSubmit, initialData, isLoadi
               {initialData ? 'Kategoriyi Düzenle' : 'Yeni Kategori'}
             </Text>
             <TouchableOpacity onPress={onClose} disabled={isLoading}>
-              <Ionicons name="close" size={24} color={colors.text.secondary} />
+              <Ionicons name="close" size={24} color={colors.text.primary} />
             </TouchableOpacity>
           </View>
 

@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { spacing, typography, borderRadius } from '@/core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
+import { useUpdateUserMutation } from '@/features/profile/data/useProfileMutations';
 
 interface ProfileMenuProps {
   visible: boolean;
@@ -19,6 +20,7 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
   const { colors, themeMode, setThemeMode } = useTheme();
   const { user } = useAuthStore();
   const [showThemeOptions, setShowThemeOptions] = useState(false);
+  const updateUserMutation = useUpdateUserMutation();
 
   const styles = useMemo(() => StyleSheet.create({
     overlay: {
@@ -95,10 +97,26 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
     navigation.navigate(screen);
   };
 
+  const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
+    const previous = themeMode;
+    setThemeMode(mode);
+
+    if (!user) return;
+    updateUserMutation.mutate(
+      { userId: user.id, payload: { theme: mode === 'system' ? null : mode } },
+      {
+        onError: () => {
+          setThemeMode(previous);
+        },
+      },
+    );
+  };
+
   const renderThemeOption = (mode: 'light' | 'dark' | 'system', label: string) => (
     <TouchableOpacity 
       style={styles.themeOption} 
-      onPress={() => setThemeMode(mode)}
+      onPress={() => handleThemeChange(mode)}
+      disabled={updateUserMutation.isPending}
     >
       <View style={styles.radioButton}>
         {themeMode === mode && <View style={styles.radioButtonSelected} />}
@@ -128,7 +146,7 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
                 <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.menuItem} onPress={() => { /* Navigate to Liked Posts */ onClose(); }}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('LikedPosts')}>
                 <Ionicons name="heart-outline" size={24} color={colors.text.primary} />
                 <Text style={styles.menuText}>Beğendiklerin</Text>
                 <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />

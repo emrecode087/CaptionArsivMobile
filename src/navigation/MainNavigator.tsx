@@ -9,6 +9,10 @@ import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import { CollectionDetailScreen } from '@/features/collections/screens/CollectionDetailScreen';
 import { useTheme } from '@/core/theme/useTheme';
 import { Sidebar } from '@/core/ui/Sidebar';
+import { LikedPostsScreen } from '@/features/posts/screens/LikedPostsScreen';
+import { BlockUsersScreen } from '@/features/blocks/screens/BlockUsersScreen';
+import { BlockTagsScreen } from '@/features/blocks/screens/BlockTagsScreen';
+import { BlockCategoriesScreen } from '@/features/blocks/screens/BlockCategoriesScreen';
 
 const Stack = createStackNavigator();
 
@@ -99,6 +103,28 @@ export const MainNavigator = memo(() => {
             headerTintColor: colors.text.primary,
             headerStyle: { backgroundColor: colors.surface },
           }}
+        />
+        <Stack.Screen
+          name="LikedPosts"
+          component={LikedPostsScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="BlockedUsers"
+          component={BlockUsersScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="BlockedTags"
+          component={BlockTagsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="BlockedCategories"
+          component={BlockCategoriesScreen}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
       <Sidebar />

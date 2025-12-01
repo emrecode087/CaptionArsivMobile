@@ -9,6 +9,7 @@ import { spacing, typography } from '@/core/theme/tokens';
 import { useNotificationsQuery, useMarkAsReadMutation, useMarkAllAsReadMutation } from '../data/useNotificationsQuery';
 import { NotificationItem } from '../ui/NotificationItem';
 import { NotificationItem as NotificationItemType } from '../domain/types';
+import { resolveNotificationCategory } from '../domain/notificationType';
 
 export const NotificationsScreen = () => {
   const { colors } = useTheme();
@@ -30,19 +31,17 @@ export const NotificationsScreen = () => {
   const markAllAsReadMutation = useMarkAllAsReadMutation();
 
   const handleNotificationPress = (item: NotificationItemType) => {
+    const category = resolveNotificationCategory(item);
+
     // Mark as read if not already
     if (!item.isRead) {
       markAsReadMutation.mutate(item.id);
     }
 
-    // Navigate based on type
-    // Assuming: 0=PostLike, 1=PostComment, 2=Follow
-    if (item.type === 0 || item.type === 1) {
-      if (item.referenceId) {
-        navigation.navigate('PostDetail', { id: item.referenceId });
-      }
-    } else if (item.type === 2) {
-      // Navigate to user profile
+    // Navigate based on resolved category
+    if ((category === 'postLike' || category === 'postComment') && item.referenceId) {
+      navigation.navigate('PostDetail', { postId: item.referenceId });
+    } else if (category === 'follow') {
       // navigation.navigate('UserProfile', { userId: item.referenceId });
     }
   };

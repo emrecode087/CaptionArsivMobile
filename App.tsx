@@ -8,6 +8,7 @@ import { navigationRef } from '@/navigation/navigationRef';
 import { useTheme } from '@/core/theme/useTheme';
 import { lightColors, darkColors } from '@/core/theme/tokens';
 import { useNotificationSetup } from '@/features/notifications/hooks/useNotificationSetup';
+import { WebViewPreloader } from '@/core/ui/WebViewPreloader';
 
 function AppContent() {
   const { isDark } = useTheme();
@@ -28,6 +29,7 @@ function AppContent() {
   return (
     <NavigationContainer ref={navigationRef} theme={navigationTheme}>
       <RootNavigator />
+      <WebViewPreloader />
       <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={isDark ? darkColors.background : lightColors.background} />
     </NavigationContainer>
   );

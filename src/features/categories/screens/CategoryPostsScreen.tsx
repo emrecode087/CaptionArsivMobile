@@ -30,6 +30,7 @@ export const CategoryPostsScreen = memo(() => {
     includePrivate: false,
     includeDeleted: false,
   });
+  const fallbackThumbnail = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAucB9p7Yi4sAAAAASUVORK5CYII=';
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -144,7 +145,7 @@ export const CategoryPostsScreen = memo(() => {
       height: '100%',
     },
     gridPlaceholder: {
-      flex: 1,
+      ...StyleSheet.absoluteFillObject,
       padding: spacing.xs,
       justifyContent: 'space-between',
     },
@@ -157,6 +158,16 @@ export const CategoryPostsScreen = memo(() => {
       alignItems: 'center',
       justifyContent: 'center',
       flex: 1,
+    },
+    gridIconOverlay: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0,0,0,0.15)',
     },
     modalContainer: {
       flex: 1,
@@ -230,33 +241,39 @@ export const CategoryPostsScreen = memo(() => {
     const itemSize = (screenWidth - (padding * 2) - (gap * 2)) / 3;
 
     // Try to find an image in embedHtml if thumbnailUrl is missing
-    let imageUrl = item.thumbnailUrl;
+    let imageUrl = item.thumbnailUrl || '';
     if (!imageUrl && item.embedHtml) {
-        const imgMatch = item.embedHtml.match(/<img[^>]+src="([^">]+)"/);
-        if (imgMatch) imageUrl = imgMatch[1];
+      const imgMatch = item.embedHtml.match(/<img[^>]+src="([^">]+)"/);
+      if (imgMatch) imageUrl = imgMatch[1];
     }
+    if (!imageUrl) {
+      imageUrl = fallbackThumbnail;
+    }
+    const isFallback = imageUrl === fallbackThumbnail;
 
     return (
       <TouchableOpacity 
         style={[styles.gridItem, { width: itemSize, height: itemSize }]} 
         onPress={() => setSelectedPost(item)}
       >
-        {imageUrl ? (
-          <Image 
-            source={{ uri: imageUrl }} 
-            style={styles.gridImage} 
-            resizeMode="cover" 
-          />
-        ) : (
+        <Image 
+          source={{ uri: imageUrl }} 
+          style={styles.gridImage} 
+          resizeMode="cover" 
+        />
+        {isFallback && (
           <View style={styles.gridPlaceholder}>
             <Text style={styles.gridCaption} numberOfLines={4}>
               {item.caption}
             </Text>
             <View style={styles.gridIconContainer}>
-               <Ionicons name="play-circle" size={24} color={colors.surface} />
+              <Ionicons name="play-circle" size={24} color={colors.surface} />
             </View>
           </View>
         )}
+        <View style={styles.gridIconOverlay}>
+          <Ionicons name="play-circle" size={20} color="#ffffff" />
+        </View>
       </TouchableOpacity>
     );
   };

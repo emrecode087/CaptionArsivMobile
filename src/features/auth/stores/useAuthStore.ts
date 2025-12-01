@@ -11,6 +11,7 @@ interface AuthState {
   hasSeenOnboarding: boolean;
   login: (accessToken: string, refreshToken: string, user: UserDto) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
+  setUser: (user: UserDto | null) => void;
   logout: () => void;
   setHasSeenOnboarding: () => void;
 }
@@ -27,6 +28,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isAuthenticated: true, accessToken, refreshToken, user }),
       setTokens: (accessToken, refreshToken) => 
         set({ accessToken, refreshToken }),
+      setUser: (user) => set({ user }),
       logout: () => 
         set({ isAuthenticated: false, accessToken: null, refreshToken: null, user: null }),
       setHasSeenOnboarding: () => set({ hasSeenOnboarding: true }),
