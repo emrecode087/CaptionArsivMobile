@@ -15,6 +15,7 @@ import { useCategoriesQuery } from '@/features/categories/data/useCategoriesQuer
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
 import { navigate } from '@/navigation/navigationRef';
 import { useTheme } from '@/core/theme/useTheme';
+import { resolveMediaUrl } from '@/core/utils/mediaUrl';
 
 const { width } = Dimensions.get('window');
 const SIDEBAR_WIDTH = width * 0.80;
@@ -24,7 +25,8 @@ export const Sidebar = () => {
   const { isSidebarOpen, setSidebarOpen } = useUIStore();
   const { data: categories } = useCategoriesQuery();
   const { canManageCategories } = usePermissions();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const logoSource = isDark ? require('../../../assets/logo.png') : require('../../../assets/logo_light.png');
 
   const translateX = useSharedValue(-SIDEBAR_WIDTH);
   const opacity = useSharedValue(0);
@@ -59,9 +61,19 @@ export const Sidebar = () => {
       borderBottomColor: colors.border,
       marginBottom: spacing.sm,
     },
+    headerBrand: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      flexShrink: 1,
+    },
     logo: {
-      width: 120,
-      height: 40,
+      width: 36,
+      height: 36,
+    },
+    brandText: {
+      ...typography.bodyBold,
+      color: colors.text.primary,
     },
     closeButton: {
       padding: spacing.xs,
@@ -155,11 +167,14 @@ export const Sidebar = () => {
       
       <Animated.View style={[styles.container, rStyle, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Image 
-            source={require('../../../assets/logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <View style={styles.headerBrand}>
+            <Image 
+              source={logoSource} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.brandText}>Caption Arşiv</Text>
+          </View>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color={colors.text.primary} />
           </TouchableOpacity>
@@ -186,19 +201,29 @@ export const Sidebar = () => {
 
           <Text style={[styles.sectionTitle, { marginTop: canManageCategories ? spacing.lg : 0 }]}>Kategoriler</Text>
 
-          {categories?.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={styles.item}
-              onPress={() => handleCategoryPress(category.id, category.name)}
-            >
-              <View style={styles.itemIcon}>
-                <Ionicons name="folder-outline" size={20} color={colors.text.secondary} />
-              </View>
-              <Text style={styles.itemText}>{category.name}</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} style={{ marginLeft: 'auto' }} />
-            </TouchableOpacity>
-          ))}
+          {categories?.map((category) => {
+            const icon = resolveMediaUrl(category.iconUrl);
+            return (
+              <TouchableOpacity
+                key={category.id}
+                style={styles.item}
+                onPress={() => handleCategoryPress(category.id, category.name)}
+              >
+                <View style={styles.itemIcon}>
+                  {icon ? (
+                    <Image
+                      source={{ uri: icon }}
+                      style={{ width: 24, height: 24, borderRadius: 6, backgroundColor: colors.surfaceHighlight }}
+                    />
+                  ) : (
+                    <Ionicons name="folder-outline" size={20} color={colors.text.secondary} />
+                  )}
+                </View>
+                <Text style={styles.itemText}>{category.name}</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </Animated.View>
     </>

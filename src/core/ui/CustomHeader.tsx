@@ -7,6 +7,8 @@ import { useUIStore } from '@/core/stores/useUIStore';
 import { useTheme } from '@/core/theme/useTheme';
 import { ProfileMenu } from '@/features/profile/ui/ProfileMenu';
 import { useUnreadNotificationsQuery } from '@/features/notifications/data/useNotificationsQuery';
+import { useAuthStore } from '@/features/auth/stores/useAuthStore';
+import { resolveMediaUrl } from '@/core/utils/mediaUrl';
 
 interface CustomHeaderProps {
   onSearchPress?: () => void;
@@ -16,10 +18,13 @@ interface CustomHeaderProps {
 export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeaderProps) => {
   const insets = useSafeAreaInsets();
   const { toggleSidebar } = useUIStore();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { data: unreadCount } = useUnreadNotificationsQuery();
   const hasUnread = (unreadCount ?? 0) > 0;
   const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
+  const { user } = useAuthStore();
+  const avatarUrl = resolveMediaUrl(user?.profileImageUrl);
+  const logoSource = isDark ? require('../../../assets/logo.png') : require('../../../assets/logo_light.png');
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -59,6 +64,24 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
     iconButton: {
       padding: spacing.xs,
     },
+    avatar: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceHighlight,
+    },
+    avatarFallback: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceHighlight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarFallbackText: {
+      ...typography.subtitle2,
+      color: colors.text.primary,
+    },
     badgeContainer: {
       position: 'absolute',
       top: -2,
@@ -89,7 +112,7 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
             </TouchableOpacity>
             
             <Image 
-              source={require('../../../assets/logo.png')} 
+              source={logoSource} 
               style={styles.logo}
               resizeMode="contain"
             />
@@ -112,7 +135,15 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setIsProfileMenuVisible(true)} style={styles.iconButton}>
-              <Ionicons name="person-circle-outline" size={28} color={colors.text.primary} />
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarFallbackText}>
+                    {user?.userName?.charAt(0)?.toUpperCase() ?? 'P'}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>

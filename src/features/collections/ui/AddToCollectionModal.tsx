@@ -1,7 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useMyCollectionsQuery, useCreateCollectionMutation, useAddPostToCollectionMutation } from '../data/useCollectionsQuery';
+import {
+  useMyCollectionsQuery,
+  useCreateCollectionMutation,
+  useAddPostToCollectionMutation,
+  useRemovePostFromCollectionMutation,
+} from '../data/useCollectionsQuery';
 import { spacing, borderRadius, typography } from '../../../core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
 
@@ -9,16 +14,23 @@ interface AddToCollectionModalProps {
   visible: boolean;
   onClose: () => void;
   postId: string;
+  onMembershipChange?: (collectionIds: string[]) => void;
 }
 
-export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visible, onClose, postId }) => {
+export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visible, onClose, postId, onMembershipChange }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
   const { colors } = useTheme();
   
-  const { data: collectionsData, isLoading: isLoadingCollections } = useMyCollectionsQuery();
+  const { data: collectionsData, isLoading: isLoadingCollections } = useMyCollectionsQuery({ includePosts: true });
   const createCollectionMutation = useCreateCollectionMutation();
   const addPostMutation = useAddPostToCollectionMutation();
+  const removePostMutation = useRemovePostFromCollectionMutation();
+
+  const savedCollectionIds = useMemo(() => {
+    const list = collectionsData?.data ?? [];
+    return list.filter((col) => col.posts?.some((p) => p.postId === postId)).map((col) => col.id);
+  }, [collectionsData?.data, postId]);
 
   const styles = useMemo(() => StyleSheet.create({
     overlay: {
@@ -137,9 +149,15 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
       { name: newCollectionName, description: '', isPrivate: true },
       {
         onSuccess: (data) => {
-          // After creating, add the post to the new collection
           if (data.data) {
-            addPostMutation.mutate({ id: data.data.id, data: { postId } });
+            addPostMutation.mutate(
+              { id: data.data.id, data: { postId } },
+              {
+                onSuccess: () => {
+                  onMembershipChange?.([...savedCollectionIds, data.data!.id]);
+                },
+              },
+            );
             setNewCollectionName('');
             setIsCreating(false);
             onClose();
@@ -149,15 +167,26 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
     );
   };
 
-  const handleAddToCollection = (collectionId: string) => {
-    addPostMutation.mutate(
-      { id: collectionId, data: { postId } },
-      {
-        onSuccess: () => {
-          onClose();
+  const toggleCollection = (collectionId: string, isSaved: boolean) => {
+    if (isSaved) {
+      removePostMutation.mutate(
+        { id: collectionId, postId },
+        {
+          onSuccess: () => {
+            onMembershipChange?.(savedCollectionIds.filter((id) => id !== collectionId));
+          },
         },
-      }
-    );
+      );
+    } else {
+      addPostMutation.mutate(
+        { id: collectionId, data: { postId } },
+        {
+          onSuccess: () => {
+            onMembershipChange?.([...savedCollectionIds, collectionId]);
+          },
+        },
+      );
+    }
   };
 
   return (
@@ -186,7 +215,7 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.collectionItem}
-                    onPress={() => handleAddToCollection(item.id)}
+                    onPress={() => toggleCollection(item.id, savedCollectionIds.includes(item.id))}
                   >
                     <View style={styles.collectionIcon}>
                       <Ionicons name="albums-outline" size={24} color={colors.primary} />
@@ -195,7 +224,12 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
                       <Text style={styles.collectionName}>{item.name}</Text>
                       <Text style={styles.collectionCount}>{item.postCount} posts</Text>
                     </View>
-                    <Ionicons name="add-circle-outline" size={24} color={colors.text.tertiary} style={{ marginLeft: 'auto' }} />
+                    <Ionicons
+                      name={savedCollectionIds.includes(item.id) ? 'bookmark' : 'bookmark-outline'}
+                      size={22}
+                      color={savedCollectionIds.includes(item.id) ? '#1DA1F2' : colors.text.tertiary}
+                      style={{ marginLeft: 'auto' }}
+                    />
                   </TouchableOpacity>
                 )}
                 style={styles.list}

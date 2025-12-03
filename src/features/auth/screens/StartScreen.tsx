@@ -16,7 +16,6 @@ import { Button } from '@/core/ui/Button';
 import { borderRadius, spacing, typography } from '@/core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
 import type { AuthStackParamList } from '../navigation/types';
-
 import { useAuthStore } from '../stores/useAuthStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -29,40 +28,45 @@ interface OnboardingSlide {
   image?: any;
 }
 
-const SLIDES: OnboardingSlide[] = [
-  {
-    id: '1',
-    title: 'CaptionArşiv\'e Hoş Geldiniz',
-    description: 'En sevdiğiniz sosyal medya içeriklerini tek bir yerde toplayın ve organize edin.',
-    image: require('../../../../assets/logo.png'),
-  },
-  {
-    id: '2',
-    title: 'Kolayca Organize Edin',
-    description: 'Videoları kategorilere ayırın, etiketleyin ve dilediğiniz zaman kolayca bulun.',
-    emoji: '📁',
-  },
-  {
-    id: '3',
-    title: 'Her Zaman Erişilebilir',
-    description: 'Favori içerikleriniz artık kaybolmayacak. İstediğiniz zaman, istediğiniz yerden erişin.',
-    emoji: '☁️',
-  },
-  {
-    id: '4',
-    title: 'Hemen Başlayın',
-    description: 'Şimdi kaydolun ve içeriklerinizi arşivlemeye başlayın!',
-    emoji: '🚀',
-  },
-];
-
 interface StartScreenProps {
   navigation: StackNavigationProp<AuthStackParamList, 'Start'>;
 }
 
 export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const logoSource = isDark ? require('../../../../assets/logo.png') : require('../../../../assets/logo_light.png');
+
+  const slides: OnboardingSlide[] = useMemo(
+    () => [
+      {
+        id: '1',
+        title: "CaptionArsiv'e Hos Geldiniz",
+        description: 'En sevdiginiz sosyal medya iceriklerini tek bir yerde toplayin ve organize edin.',
+        image: logoSource,
+      },
+      {
+        id: '2',
+        title: 'Kolayca Organize Edin',
+        description: 'Videolari kategorilere ayirin, etiketleyin ve dilediginiz zaman kolayca bulun.',
+        emoji: '📂',
+      },
+      {
+        id: '3',
+        title: 'Her Zaman Erisilebilir',
+        description: 'Favori icerikleriniz artik kaybolmayacak. Istediginiz zaman, istediginiz yerden erisin.',
+        emoji: '⏰',
+      },
+      {
+        id: '4',
+        title: 'Hemen Baslayin',
+        description: 'Simdi kaydolun ve iceriklerinizi arsivlemeye baslayin!',
+        emoji: '🚀',
+      },
+    ],
+    [logoSource],
+  );
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -75,7 +79,7 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
   };
 
   const handleNext = () => {
-    if (currentIndex < SLIDES.length - 1) {
+    if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     }
   };
@@ -90,7 +94,7 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
     navigation.navigate('Login');
   };
 
-  const isLastSlide = currentIndex === SLIDES.length - 1;
+  const isLastSlide = currentIndex === slides.length - 1;
 
   const renderSlide = ({ item }: { item: OnboardingSlide }) => (
     <View style={styles.slide}>
@@ -106,7 +110,7 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
     </View>
   );
 
-  const renderDot = (_: any, index: number) => {
+  const renderDot = (_: OnboardingSlide, index: number) => {
     const inputRange = [(index - 1) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 1) * SCREEN_WIDTH];
     const dotWidth = scrollX.interpolate({
       inputRange,
@@ -119,19 +123,14 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
       extrapolate: 'clamp',
     });
 
-    return (
-      <Animated.View
-        key={index}
-        style={[styles.dot, { width: dotWidth, opacity }]}
-      />
-    );
+    return <Animated.View key={index} style={[styles.dot, { width: dotWidth, opacity }]} />;
   };
 
   return (
-    <View style={styles.container}>
-      <Animated.FlatList
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <FlatList
         ref={flatListRef}
-        data={SLIDES}
+        data={slides}
         renderItem={renderSlide}
         horizontal
         pagingEnabled
@@ -145,9 +144,7 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
       />
 
       <View style={styles.footer}>
-        <View style={styles.pagination}>
-          {SLIDES.map((_, index) => renderDot(_, index))}
-        </View>
+        <View style={styles.pagination}>{slides.map((slide, index) => renderDot(slide, index))}</View>
 
         {!isLastSlide ? (
           <View style={styles.buttonContainer}>
@@ -156,14 +153,9 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
           </View>
         ) : (
           <View style={styles.buttonContainer}>
+            <Button title="Giris Yap" variant="outline" onPress={handleGetStarted} style={styles.authButton} />
             <Button
-              title="Giriş Yap"
-              variant="outline"
-              onPress={handleGetStarted}
-              style={styles.authButton}
-            />
-            <Button
-              title="Kayıt Ol"
+              title="Kayit Ol"
               variant="primary"
               onPress={() => {
                 setHasSeenOnboarding();
@@ -180,79 +172,80 @@ export const StartScreen = memo<StartScreenProps>(({ navigation }) => {
 
 StartScreen.displayName = 'StartScreen';
 
-const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  slide: {
-    width: SCREEN_WIDTH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: SCREEN_HEIGHT * 0.15,
-  },
-  emojiContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xxl,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  emoji: {
-    fontSize: 64,
-  },
-  slideImage: {
-    width: 80,
-    height: 80,
-  },
-  title: {
-    ...typography.h2,
-    color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  description: {
-    ...typography.body,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  footer: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.xs,
-    height: 32,
-  },
-  dot: {
-    height: 8,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  skipButton: {
-    flex: 1,
-  },
-  nextButton: {
-    flex: 2,
-  },
-  authButton: {
-    flex: 1,
-  },
-});
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    slide: {
+      width: SCREEN_WIDTH,
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.xxl,
+      alignItems: 'center',
+      gap: spacing.lg,
+    },
+    emojiContainer: {
+      width: SCREEN_WIDTH * 0.7,
+      height: SCREEN_HEIGHT * 0.32,
+      borderRadius: borderRadius.xl,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.15,
+      shadowOffset: { width: 0, height: 10 },
+      shadowRadius: 20,
+      elevation: 8,
+      padding: spacing.lg,
+    },
+    emoji: {
+      fontSize: 72,
+    },
+    slideImage: {
+      width: '80%',
+      height: '80%',
+    },
+    title: {
+      ...typography.h3,
+      color: colors.text.primary,
+      textAlign: 'center',
+    },
+    description: {
+      ...typography.body,
+      color: colors.text.secondary,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    footer: {
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.lg,
+      gap: spacing.lg,
+    },
+    pagination: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: spacing.xs,
+    },
+    dot: {
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.primary,
+    },
+    buttonContainer: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      justifyContent: 'center',
+    },
+    skipButton: {
+      flex: 1,
+    },
+    nextButton: {
+      flex: 1,
+    },
+    authButton: {
+      flex: 1,
+    },
+  });
+
+export default StartScreen;

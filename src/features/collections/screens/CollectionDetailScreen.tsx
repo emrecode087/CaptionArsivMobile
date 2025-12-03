@@ -88,29 +88,43 @@ export const CollectionDetailScreen = () => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
+      marginBottom: spacing.sm,
     },
     editButton: {
       padding: spacing.xs,
+      backgroundColor: colors.surfaceHighlight,
+      borderRadius: borderRadius.full,
     },
     title: {
-      ...typography.h3,
+      ...typography.h2,
       color: colors.text.primary,
-      marginBottom: spacing.xs,
       flex: 1,
+      marginRight: spacing.md,
     },
     description: {
       ...typography.body,
       color: colors.text.secondary,
-      marginBottom: spacing.sm,
+      marginBottom: spacing.md,
+      lineHeight: 22,
     },
     stats: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
+      gap: spacing.md,
+    },
+    statItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.surfaceHighlight,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: borderRadius.sm,
     },
     statText: {
       ...typography.caption,
-      color: colors.text.tertiary,
+      color: colors.text.secondary,
+      fontWeight: '500',
     },
     likeButton: {
       flexDirection: 'row',
@@ -126,7 +140,7 @@ export const CollectionDetailScreen = () => {
     gridItem: {
       marginBottom: spacing.md,
       backgroundColor: colors.surface,
-      borderRadius: borderRadius.sm,
+      borderRadius: borderRadius.md,
       overflow: 'hidden',
     },
     gridImage: {
@@ -253,7 +267,10 @@ export const CollectionDetailScreen = () => {
     const screenWidth = Dimensions.get('window').width;
     const gap = spacing.md;
     const padding = spacing.md;
+    // 3 columns
     const itemSize = (screenWidth - (padding * 2) - (gap * 2)) / 3;
+    // Aspect ratio 9:16 for video thumbnails
+    const itemHeight = itemSize * (16/9);
 
     // Try to find an image in embedHtml if thumbnailUrl is missing
     let imageUrl = item.thumbnailUrl;
@@ -264,7 +281,7 @@ export const CollectionDetailScreen = () => {
 
     return (
       <TouchableOpacity 
-        style={[styles.gridItem, { width: itemSize, height: itemSize }]} 
+        style={[styles.gridItem, { width: itemSize, height: itemHeight }]} 
         onPress={() => setSelectedPost(item)}
       >
         {imageUrl ? (
@@ -316,19 +333,24 @@ export const CollectionDetailScreen = () => {
         </View>
         <Text style={styles.description}>{collection.description}</Text>
         <View style={styles.stats}>
-          <Text style={styles.statText}>{collection.postCount} Posts</Text>
-          <Text style={styles.statText}>•</Text>
-          <Text style={styles.statText}>{collection.isPrivate ? 'Private' : 'Public'}</Text>
-          <Text style={styles.statText}>•</Text>
+          <View style={styles.statItem}>
+            <Ionicons name="videocam-outline" size={14} color={colors.text.secondary} />
+            <Text style={styles.statText}>{collection.postCount} Video</Text>
+          </View>
+          
+          <View style={styles.statItem}>
+            <Ionicons name={collection.isPrivate ? "lock-closed-outline" : "globe-outline"} size={14} color={colors.text.secondary} />
+            <Text style={styles.statText}>{collection.isPrivate ? 'Gizli' : 'Herkese Açık'}</Text>
+          </View>
+
           <TouchableOpacity 
-            style={styles.likeButton} 
+            style={[styles.statItem, collection.isLiked && { backgroundColor: colors.error + '15' }]} 
             onPress={isOwner ? undefined : handleLikePress}
             disabled={isOwner}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons 
               name={collection.isLiked ? "heart" : "heart-outline"} 
-              size={18} 
+              size={14} 
               color={collection.isLiked ? colors.error : colors.text.secondary} 
             />
             <Text style={[

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@ta
 import { ApiError } from '@/core/types/api';
 import { postsQueryKeys } from '@/features/posts/data/usePostsQuery';
 
-import { fetchCategories, createCategory, updateCategory, deleteCategory, followCategory, unfollowCategory, getCategoryById } from './categoriesApi';
+import { fetchCategories, createCategory, updateCategory, deleteCategory, followCategory, unfollowCategory, getCategoryById, uploadCategoryIcon } from './categoriesApi';
 import type { Category, CategoryListParams, CreateCategoryRequest, UpdateCategoryRequest, CategoryFollowStatus } from '../domain/types';
 
 export const categoriesQueryKeys = {
@@ -29,7 +29,7 @@ export const useCategoriesQuery = (
 export const useCreateCategoryMutation = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<string, ApiError, CreateCategoryRequest>({
+  return useMutation<Category, ApiError, CreateCategoryRequest>({
     mutationFn: createCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoriesQueryKeys.all });
@@ -40,7 +40,7 @@ export const useCreateCategoryMutation = () => {
 export const useUpdateCategoryMutation = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<string, ApiError, { id: string; data: UpdateCategoryRequest }>({
+  return useMutation<Category, ApiError, { id: string; data: UpdateCategoryRequest }>({
     mutationFn: ({ id, data }) => updateCategory(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoriesQueryKeys.all });
@@ -126,3 +126,20 @@ export const useCategoryQuery = (
     staleTime: 1000 * 60 * 5, // 5 minutes
     ...options,
   });
+
+export const useUploadCategoryIconMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Category, ApiError, { categoryId: string; uri: string; name?: string; type?: string }>({
+    mutationFn: ({ categoryId, ...file }) => uploadCategoryIcon(categoryId, file),
+    onSuccess: (updatedCategory) => {
+      queryClient.setQueryData<Category[]>(categoriesQueryKeys.list(), (old) =>
+        old ? old.map((cat) => (cat.id === updatedCategory.id ? { ...cat, ...updatedCategory } : cat)) : old,
+      );
+      queryClient.setQueryData<Category>(categoriesQueryKeys.detail(updatedCategory.id), (old) =>
+        old ? { ...old, ...updatedCategory } : updatedCategory,
+      );
+      queryClient.invalidateQueries({ queryKey: categoriesQueryKeys.all });
+    },
+  });
+};

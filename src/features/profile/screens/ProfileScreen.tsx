@@ -1,18 +1,35 @@
-import { memo, useMemo } from 'react';
-import { StyleSheet, Text, View, Alert, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { memo, useLayoutEffect, useMemo } from 'react';
+import { StyleSheet, Text, View, Alert, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 import { Button } from '@/core/ui/Button';
 import { spacing, typography, borderRadius } from '@/core/theme/tokens';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 import { useTheme } from '@/core/theme/useTheme';
+import { resolveMediaUrl } from '@/core/utils/mediaUrl';
 
 export const ProfileScreen = memo(() => {
   const { user, logout } = useAuthStore();
   const { colors, themeMode, setThemeMode } = useTheme();
+  const navigation = useNavigation<any>();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const avatarUrl = resolveMediaUrl(user?.profileImageUrl);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('EditProfile')}
+          style={{ paddingHorizontal: spacing.sm }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={{ color: colors.primary, ...typography.subtitle1 }}>Profili Duzenle</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [colors.primary, navigation]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -40,8 +57,8 @@ export const ProfileScreen = memo(() => {
       <View style={styles.content}>
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
-            {user?.profileImageUrl ? (
-              <Image source={{ uri: user.profileImageUrl }} style={styles.avatar} />
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarText}>

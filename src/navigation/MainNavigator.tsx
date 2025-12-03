@@ -20,9 +20,12 @@ import { CreatePostScreen } from '@/features/posts/screens/CreatePostScreen';
 import { PostDetailScreen } from '@/features/posts/screens/PostDetailScreen';
 import { NotificationsScreen } from '@/features/notifications/screens/NotificationsScreen';
 import SettingsScreen from '@/features/profile/screens/SettingsScreen';
+import { EditProfileScreen } from '@/features/profile/screens/EditProfileScreen';
+import { ChangePasswordScreen } from '@/features/profile/screens/ChangePasswordScreen';
 
 export const MainNavigator = memo(() => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const logoSource = isDark ? require('../../assets/logo.png') : require('../../assets/logo_light.png');
 
   return (
     <View style={{ flex: 1 }}>
@@ -47,7 +50,7 @@ export const MainNavigator = memo(() => {
             headerShown: true,
             headerTitle: () => (
               <Image 
-                source={require('../../assets/logo.png')} 
+                source={logoSource} 
                 style={{ width: 120, height: 40 }} 
                 resizeMode="contain" 
               />
@@ -100,6 +103,26 @@ export const MainNavigator = memo(() => {
           options={{
             headerShown: true,
             title: 'Ayarlar',
+            headerTintColor: colors.text.primary,
+            headerStyle: { backgroundColor: colors.surface },
+          }}
+        />
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{
+            headerShown: true,
+            title: 'Profili duzenle',
+            headerTintColor: colors.text.primary,
+            headerStyle: { backgroundColor: colors.surface },
+          }}
+        />
+        <Stack.Screen
+          name="ChangePassword"
+          component={ChangePasswordScreen}
+          options={{
+            headerShown: true,
+            title: 'Sifre degistir',
             headerTintColor: colors.text.primary,
             headerStyle: { backgroundColor: colors.surface },
           }}

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type QueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/core/types/api';
+import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 
 import type { Post, PostsListParams, CreatePostRequest, Comment } from '../domain/types';
 import { fetchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment, fetchFollowedCategoryPosts, fetchLikedPosts } from './postsApi';
@@ -8,7 +9,8 @@ import { fetchPosts, getPostById, createPost, likePost, unlikePost, fetchComment
 export const postsQueryKeys = {
   all: ['posts'] as const,
   list: (params?: PostsListParams) => [...postsQueryKeys.all, params] as const,
-  liked: () => [...postsQueryKeys.all, 'liked'] as const,
+  liked: (userId?: string, includePrivate?: boolean, includeDeleted?: boolean) =>
+    [...postsQueryKeys.all, 'liked', userId ?? 'me', includePrivate ?? true, includeDeleted ?? false] as const,
   followed: () => [...postsQueryKeys.all, 'followed'] as const,
   detail: (id: string) => [...postsQueryKeys.all, 'detail', id] as const,
   comments: (postId: string) => [...postsQueryKeys.detail(postId), 'comments'] as const,
@@ -73,6 +75,7 @@ export const useCreatePostMutation = () => {
 
 export const useLikePostMutation = () => {
   const queryClient = useQueryClient();
+  const currentUserId = useAuthStore.getState().user?.id;
 
   return useMutation<{ postId: string; isLiked: boolean; totalLikes: number }, ApiError, string>({
     mutationFn: likePost,
@@ -89,7 +92,7 @@ export const useLikePostMutation = () => {
         likeCount: data.totalLikes,
       }));
 
-      queryClient.invalidateQueries({ queryKey: postsQueryKeys.liked() });
+      queryClient.invalidateQueries({ queryKey: postsQueryKeys.liked(currentUserId) });
     },
     onError: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: postsQueryKeys.all });
@@ -100,6 +103,7 @@ export const useLikePostMutation = () => {
 
 export const useUnlikePostMutation = () => {
   const queryClient = useQueryClient();
+  const currentUserId = useAuthStore.getState().user?.id;
 
   return useMutation<{ postId: string; isLiked: boolean; totalLikes: number }, ApiError, string>({
     mutationFn: unlikePost,
@@ -116,7 +120,7 @@ export const useUnlikePostMutation = () => {
         likeCount: data.totalLikes,
       }));
 
-      queryClient.invalidateQueries({ queryKey: postsQueryKeys.liked() });
+      queryClient.invalidateQueries({ queryKey: postsQueryKeys.liked(currentUserId) });
     },
     onError: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: postsQueryKeys.all });
@@ -168,10 +172,17 @@ export const useFollowedCategoryPostsQuery = (
   });
 
 export const useLikedPostsQuery = (
+  params: { userId?: string; includePrivate?: boolean; includeDeleted?: boolean },
   options?: Omit<UseQueryOptions<Post[], ApiError, Post[], ReturnType<typeof postsQueryKeys.liked>>, 'queryKey' | 'queryFn'>,
 ) =>
   useQuery({
-    queryKey: postsQueryKeys.liked(),
-    queryFn: fetchLikedPosts,
+    queryKey: postsQueryKeys.liked(params?.userId, params?.includePrivate ?? true, params?.includeDeleted ?? false),
+    queryFn: () =>
+      fetchLikedPosts({
+        userId: params.userId as string,
+        includePrivate: params.includePrivate ?? true,
+        includeDeleted: params.includeDeleted ?? false,
+      }),
     ...options,
+    enabled: !!params?.userId && (options?.enabled ?? true),
   });

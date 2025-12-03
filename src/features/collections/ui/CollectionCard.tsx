@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { Collection } from '../domain/types';
 import { spacing, borderRadius, typography } from '../../../core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
@@ -10,134 +10,159 @@ import { useAuthStore } from '../../auth/stores/useAuthStore';
 interface CollectionCardProps {
   collection: Collection;
   onPress: () => void;
+  onMenuPress?: () => void;
+  variant?: 'default' | 'discover';
 }
 
-export const CollectionCard: React.FC<CollectionCardProps> = ({ collection, onPress }) => {
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+export const CollectionCard: React.FC<CollectionCardProps> = ({ collection, onPress, onMenuPress, variant = 'default' }) => {
   const { user } = useAuthStore();
   const { colors } = useTheme();
   const likeMutation = useLikeCollectionMutation();
   const unlikeMutation = useUnlikeCollectionMutation();
 
   const isOwner = user?.id === collection.userId;
+  // Calculate width based on 2 columns with padding
+  // Screen padding: spacing.md (16) * 2 = 32
+  // Gap between columns: spacing.md (16)
+  // Total available width = SCREEN_WIDTH - 48
+  const cardWidth = (SCREEN_WIDTH - (spacing.md * 3)) / 2;
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
-      backgroundColor: colors.surface,
+      width: cardWidth,
+      height: cardWidth * 1.2, // Slightly rectangular
       borderRadius: borderRadius.md,
-      padding: spacing.md,
-      marginBottom: spacing.md,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      overflow: 'hidden',
+      backgroundColor: colors.surfaceHighlight,
+      position: 'relative',
       borderWidth: 1,
       borderColor: colors.border,
     },
-    content: {
-      gap: spacing.xs,
-    },
-    header: {
+    collageContainer: {
+      flex: 1,
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+    },
+    collageItem: {
+      width: '50%',
+      height: '50%',
+      borderWidth: 0.5,
+      borderColor: colors.surface,
+    },
+    collageImage: {
+      width: '100%',
+      height: '100%',
+    },
+    placeholderItem: {
+      width: '50%',
+      height: '50%',
+      backgroundColor: colors.surfaceHighlight,
       alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 0.5,
+      borderColor: colors.surface,
+    },
+    infoOverlay: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      padding: spacing.sm,
+      backgroundColor: 'rgba(0,0,0,0.6)', // Dark gradient-like overlay
     },
     title: {
-      ...typography.h3,
-      color: colors.text.primary,
-      flex: 1,
-      marginRight: spacing.sm,
-    },
-    description: {
-      ...typography.body,
-      color: colors.text.secondary,
-    },
-    footer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginTop: spacing.sm,
-    },
-    statsContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    likeButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    likeCount: {
-      ...typography.caption,
-      color: colors.text.secondary,
-    },
-    likedText: {
-      color: colors.error,
+      ...typography.bodyBold,
+      color: '#FFFFFF',
+      fontSize: 14,
+      marginBottom: 2,
     },
     count: {
       ...typography.caption,
-      color: colors.primary,
-      fontWeight: '600',
+      color: 'rgba(255,255,255,0.8)',
+      fontSize: 12,
     },
-    date: {
-      ...typography.caption,
-      color: colors.text.tertiary,
+    menuButton: {
+      position: 'absolute',
+      top: spacing.xs,
+      right: spacing.xs,
+      padding: spacing.xs,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      borderRadius: borderRadius.full,
     },
-  }), [colors]);
-
-  const handleLikePress = () => {
-    if (isOwner) return;
-    if (collection.isLiked) {
-      unlikeMutation.mutate(collection.id);
-    } else {
-      likeMutation.mutate(collection.id);
+    privateIcon: {
+      marginLeft: 4,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
     }
+  }), [colors, cardWidth]);
+
+  // Get up to 4 thumbnails from posts
+  const thumbnails = useMemo(() => {
+    const thumbs: string[] = [];
+    if (collection.posts && collection.posts.length > 0) {
+      collection.posts.slice(0, 4).forEach(post => {
+        if (post.thumbnailUrl) {
+          thumbs.push(post.thumbnailUrl);
+        } else if (post.embedHtml) {
+          const match = post.embedHtml.match(/<img[^>]+src="([^">]+)"/);
+          if (match) thumbs.push(match[1]);
+        }
+      });
+    }
+    return thumbs;
+  }, [collection.posts]);
+
+  const renderCollage = () => {
+    const items = [];
+    for (let i = 0; i < 4; i++) {
+      if (i < thumbnails.length) {
+        items.push(
+          <View key={i} style={styles.collageItem}>
+            <Image 
+              source={{ uri: thumbnails[i] }} 
+              style={styles.collageImage} 
+              resizeMode="cover" 
+            />
+          </View>
+        );
+      } else {
+        items.push(
+          <View key={i} style={styles.placeholderItem}>
+            <Ionicons name="image-outline" size={20} color={colors.text.tertiary} />
+          </View>
+        );
+      }
+    }
+    return items;
   };
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>
-            {collection.name}
-          </Text>
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.9}>
+      <View style={styles.collageContainer}>
+        {renderCollage()}
+      </View>
+
+      <View style={styles.infoOverlay}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={1}>{collection.name}</Text>
           {collection.isPrivate && (
-            <Ionicons name="lock-closed" size={16} color={colors.text.secondary} />
+            <Ionicons name="lock-closed" size={12} color="#FFFFFF" style={styles.privateIcon} />
           )}
         </View>
-        <Text style={styles.description} numberOfLines={2}>
-          {collection.description || 'No description'}
-        </Text>
-        <View style={styles.footer}>
-          <View style={styles.statsContainer}>
-            <Text style={styles.count}>
-              {collection.postCount} {collection.postCount === 1 ? 'Post' : 'Posts'}
-            </Text>
-            <TouchableOpacity 
-              style={styles.likeButton} 
-              onPress={isOwner ? undefined : handleLikePress}
-              disabled={isOwner}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons 
-                name={collection.isLiked ? "heart" : "heart-outline"} 
-                size={18} 
-                color={collection.isLiked ? colors.error : colors.text.secondary} 
-              />
-              <Text style={[
-                styles.likeCount, 
-                collection.isLiked && styles.likedText
-              ]}>
-                {collection.likeCount || 0}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.date}>
-            {new Date(collection.updatedAt).toLocaleDateString()}
-          </Text>
-        </View>
+        <Text style={styles.count}>{collection.postCount} video</Text>
       </View>
+
+      <TouchableOpacity 
+        style={styles.menuButton} 
+        onPress={onMenuPress}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="ellipsis-horizontal" size={16} color="#FFFFFF" />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 };

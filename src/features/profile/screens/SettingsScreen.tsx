@@ -7,12 +7,15 @@ import {
   Switch,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/core/theme/useTheme';
 import { spacing, typography, borderRadius } from '@/core/theme/tokens';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
-import { useUpdateUserMutation } from '@/features/profile/data/useProfileMutations';
+import { useDeleteAccountMutation, useUpdateUserMutation } from '@/features/profile/data/useProfileMutations';
+import { Button } from '@/core/ui/Button';
+import { Input } from '@/core/ui/Input';
 
 const SectionHeader = ({ title }: { title: string }) => {
   const { colors } = useTheme();
@@ -54,10 +57,18 @@ const Row = ({
   );
 };
 
+const deleteReasonOptions = [
+  'Icerikler ilgimi cekmiyor',
+  'Cok bildirim aliyorum',
+  'Gizlilik endisesi',
+  'Baska bir hesap kullaniyorum',
+];
+
 export const SettingsScreen = ({ navigation }: any) => {
   const { colors, setThemeMode, themeMode } = useTheme();
   const user = useAuthStore((state) => state.user);
   const updateUserMutation = useUpdateUserMutation();
+  const deleteAccountMutation = useDeleteAccountMutation();
 
   const [followThreadOnReply, setFollowThreadOnReply] = useState<boolean>(user?.autoFollowOnReply ?? false);
   const [clearCacheOnAction, setClearCacheOnAction] = useState(false);
@@ -72,6 +83,10 @@ export const SettingsScreen = ({ navigation }: any) => {
   const [autoplayOption, setAutoplayOption] = useState<'always' | 'wifi' | 'never'>(
     user?.autoplayVideos === false ? 'never' : 'always'
   );
+  const [deleteStep, setDeleteStep] = useState<'closed' | 'confirm' | 'reasons' | 'final'>('closed');
+  const [selectedDeleteReasons, setSelectedDeleteReasons] = useState<string[]>([]);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     setFollowThreadOnReply(user?.autoFollowOnReply ?? false);
@@ -156,6 +171,47 @@ export const SettingsScreen = ({ navigation }: any) => {
     );
   };
 
+  const resetDeleteFlow = () => {
+    if (deleteAccountMutation.isPending) return;
+    setDeleteStep('closed');
+    setSelectedDeleteReasons([]);
+    setDeleteConfirmText('');
+    setDeleteError(null);
+  };
+
+  const startDeleteFlow = () => {
+    setSelectedDeleteReasons([]);
+    setDeleteConfirmText('');
+    setDeleteError(null);
+    setDeleteStep('confirm');
+  };
+
+  const toggleDeleteReason = (reason: string) => {
+    setSelectedDeleteReasons((prev) =>
+      prev.includes(reason) ? prev.filter((item) => item !== reason) : [...prev, reason],
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    if (!user) {
+      Alert.alert('Oturum bulunamadi', 'Hesap silmek icin once giris yap.');
+      return;
+    }
+
+    setDeleteError(null);
+    deleteAccountMutation.mutate(undefined, {
+      onSuccess: () => {
+        resetDeleteFlow();
+        Alert.alert('Hesap silindi', 'Hesabin kapatildi, tekrar giris yaparak geri alabilirsin.');
+      },
+      onError: (error: any) => {
+        setDeleteError(error?.message ?? 'Hesap silinemedi');
+      },
+    });
+  };
+
+  const canConfirmDelete = deleteConfirmText.trim().toUpperCase() === 'SIL';
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -205,8 +261,7 @@ export const SettingsScreen = ({ navigation }: any) => {
               />
             }
           />
-          <Row title="Engellenmiş başlıklar" onPress={() => navigation.navigate('BlockedCategories')} />
-          <Row title="Engellenmiş ilgi alanları" onPress={() => navigation.navigate('BlockedCategories')} />
+          <Row title="Engellenmiş kategoriler" onPress={() => navigation.navigate('BlockedCategories')} />
           <Row title="Engellenmiş etiketler" onPress={() => navigation.navigate('BlockedTags')} />
           <Row title="Engellenmiş kullanıcılar" onPress={() => navigation.navigate('BlockedUsers')} showDivider={false} />
         </View>
@@ -251,9 +306,107 @@ export const SettingsScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Row title="HESABI SİL" onPress={() => { /* show confirm delete */ }} showDivider={false} danger />
+          <Row title="HESABI SİL" onPress={startDeleteFlow} showDivider={false} danger />
         </View>
       </ScrollView>
+
+      <Modal visible={deleteStep !== 'closed'} animationType="fade" transparent onRequestClose={resetDeleteFlow}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            {deleteStep === 'confirm' && (
+              <View>
+                <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Hesabi silmek ister misin?</Text>
+                <Text style={[styles.deleteText, { color: colors.text.secondary }]}>
+                  Hesabin pasif hale getirilecek. Istersen yeniden giris yaparak geri alabilirsin.
+                </Text>
+                <View style={styles.deleteActions}>
+                  <Button title="Vazgec" variant="ghost" onPress={resetDeleteFlow} />
+                  <Button title="Devam" onPress={() => setDeleteStep('reasons')} />
+                </View>
+              </View>
+            )}
+
+            {deleteStep === 'reasons' && (
+              <View>
+                <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Silme nedenini secer misin?</Text>
+                <Text style={[styles.deleteText, { color: colors.text.secondary }]}>
+                  Secimlerin simdilik paylasilmiyor; bir sonraki adimda son onayi vereceksin.
+                </Text>
+                <View style={styles.reasonList}>
+                  {deleteReasonOptions.map((reason) => {
+                    const isSelected = selectedDeleteReasons.includes(reason);
+                    return (
+                      <TouchableOpacity
+                        key={reason}
+                        style={[styles.reasonRow, { borderColor: colors.border }]}
+                        onPress={() => toggleDeleteReason(reason)}
+                        activeOpacity={0.8}
+                      >
+                        <View
+                          style={[
+                            styles.checkbox,
+                            { borderColor: colors.text.secondary },
+                            isSelected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                          ]}
+                        >
+                          {isSelected && <Ionicons name="checkmark" size={16} color={colors.text.inverse} />}
+                        </View>
+                        <Text style={[styles.reasonText, { color: colors.text.primary }]}>{reason}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {selectedDeleteReasons.length > 0 && (
+                  <View style={styles.reasonChips}>
+                    {selectedDeleteReasons.map((reason) => (
+                      <View key={reason} style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Text style={[styles.chipText, { color: colors.text.secondary }]}>{reason}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                <View style={styles.deleteActions}>
+                  <Button title="Geri" variant="ghost" onPress={() => setDeleteStep('confirm')} />
+                  <Button title="Devam" onPress={() => setDeleteStep('final')} />
+                </View>
+              </View>
+            )}
+
+            {deleteStep === 'final' && (
+              <View>
+                <Text style={[styles.modalTitle, { color: colors.text.primary }]}>Son onay</Text>
+                <Text style={[styles.deleteText, { color: colors.text.secondary }]}>
+                  Hesabini kalici olarak silmek icin "SIL" yaz ve onayla.
+                </Text>
+                <Input
+                  value={deleteConfirmText}
+                  onChangeText={setDeleteConfirmText}
+                  placeholder="SIL"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  containerStyle={{ marginTop: spacing.sm }}
+                />
+                {deleteError && <Text style={[styles.errorText, { color: colors.error }]}>{deleteError}</Text>}
+                <View style={styles.deleteActions}>
+                  <Button
+                    title="Hesabi sil"
+                    onPress={handleDeleteAccount}
+                    loading={deleteAccountMutation.isPending}
+                    disabled={!canConfirmDelete || deleteAccountMutation.isPending}
+                    variant="primary"
+                  />
+                  <Button
+                    title="Geri"
+                    variant="ghost"
+                    onPress={() => setDeleteStep('reasons')}
+                    disabled={deleteAccountMutation.isPending}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={autoplayModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -356,6 +509,60 @@ const styles = StyleSheet.create({
   modalCloseText: {
     ...typography.body,
     fontWeight: '700',
+  },
+  deleteText: {
+    ...typography.body2,
+    marginBottom: spacing.sm,
+  },
+  deleteActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  reasonList: {
+    marginTop: spacing.sm,
+  },
+  reasonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.xs,
+    gap: spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reasonText: {
+    ...typography.body2,
+    flex: 1,
+  },
+  reasonChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  chip: {
+    borderWidth: 1,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  chipText: {
+    ...typography.caption,
+  },
+  errorText: {
+    ...typography.body2,
+    marginTop: spacing.xs,
   },
 });
 

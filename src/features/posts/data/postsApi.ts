@@ -146,16 +146,29 @@ export const fetchFollowedCategoryPosts = async () => {
   return payload.data;
 };
 
-export const fetchLikedPosts = async () => {
-  const response = await apiClient.get<ApiResult<Post[]>>(`${endpoint}/liked`);
+export const fetchLikedPosts = async (params: { userId: string; includePrivate?: boolean; includeDeleted?: boolean }) => {
+  if (!params?.userId) {
+    throw new ApiError('Begeniler icin kullanici bulunamadi');
+  }
+
+  const response = await apiClient.get<ApiResult<Post[]>>(`/Users/${params.userId}/likes`, {
+    params: {
+      includePrivate: params.includePrivate ?? true,
+      includeDeleted: params.includeDeleted ?? false,
+    },
+  });
   const payload = response.data;
 
   if (!payload.isSuccess || !payload.data) {
-    throw new ApiError(payload.message ?? 'Beğendiğiniz gönderiler alınamadı', {
+    throw new ApiError(payload.message ?? 'Begendigin gonderiler alinamadi', {
       status: response.status,
       errors: payload.errors ?? null,
     });
   }
 
-  return payload.data;
+  // The likes endpoint already implies "liked by current user"; enforce flag for UI consistency.
+  return payload.data.map((post) => ({
+    ...post,
+    isLikedByCurrentUser: true,
+  }));
 };

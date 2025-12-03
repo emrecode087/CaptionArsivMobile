@@ -14,11 +14,14 @@ export const LikedPostsScreen = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { isAuthenticated, user } = useAuthStore();
 
-  const { data, isLoading, isRefetching, refetch } = useLikedPostsQuery({
-    enabled: isAuthenticated,
-  });
+  const { data, isLoading, isRefetching, refetch } = useLikedPostsQuery(
+    { userId: user?.id, includePrivate: true, includeDeleted: false },
+    {
+      enabled: isAuthenticated && !!user?.id,
+    },
+  );
 
   const styles = useMemo(() => StyleSheet.create({
     container: {

@@ -53,7 +53,7 @@ export const SubMenu = ({ activeTab, onTabPress }: SubMenuProps) => {
     { id: 'home', label: 'Anasayfa' },
     { id: 'top', label: 'Popüler' },
     { id: 'fresh', label: 'Yeni' },
-    { id: 'collections', label: 'Koleksiyonun' },
+    { id: 'collections', label: 'Koleksiyonlar' },
   ];
 
   return (

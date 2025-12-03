@@ -1,18 +1,33 @@
 import { memo, useState, useEffect, useMemo, useRef } from 'react';
 import { logger } from '@/core/utils/logger';
-import { StyleSheet, View, Text, Dimensions, TouchableOpacity, Linking, Pressable, Image } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  Dimensions,
+  TouchableOpacity,
+  Linking,
+  Pressable,
+  Image,
+  Modal,
+  Alert,
+  Share,
+} from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 
 import type { Post } from '../domain/types';
-import { spacing } from '@/core/theme/tokens';
+import { borderRadius, spacing, typography } from '@/core/theme/tokens';
 import { AddToCollectionModal } from '@/features/collections/ui/AddToCollectionModal';
+import { useMyCollectionsQuery } from '@/features/collections/data/useCollectionsQuery';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
-import { Alert } from 'react-native';
-import { useLikePostMutation, useUnlikePostMutation } from '../data/usePostsQuery';
+import { useLikePostMutation, useUnlikePostMutation, postsQueryKeys } from '../data/usePostsQuery';
 import { useTheme } from '@/core/theme/useTheme';
 import { CommentsModal } from './CommentsModal';
+import { useBlockUserMutation, useBlockTagMutation, useBlockCategoryMutation } from '@/features/blocks/data/useBlocksMutations';
+import { useUpdateBlockedCache } from '@/features/blocks/data/useBlocksQuery';
 
 interface PostCardProps {
   post: Post;
@@ -20,22 +35,32 @@ interface PostCardProps {
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CARD_PADDING = 16;
 
 export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => {
   const navigation = useNavigation<any>();
   const isScreenFocused = useIsFocused();
-  const [webViewHeight, setWebViewHeight] = useState(400);
+  const [webViewHeight, setWebViewHeight] = useState(300);
   const [isLoadingEmbed, setIsLoadingEmbed] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [isCollectionModalVisible, setIsCollectionModalVisible] = useState(false);
   const [isCommentsVisible, setIsCommentsVisible] = useState(false);
+  const [isActionsVisible, setIsActionsVisible] = useState(false);
+  const [isBlockSheetVisible, setIsBlockSheetVisible] = useState(false);
+  const [selectedTag, setSelectedTag] = useState<string | null>(post.tags?.[0] ?? null);
+  const [showTagPicker, setShowTagPicker] = useState(false);
   const { isAuthenticated } = useAuthStore();
   const { colors } = useTheme();
   const webViewRef = useRef<any>(null);
+  const queryClient = useQueryClient();
+  const updateBlocksCache = useUpdateBlockedCache();
+  const { data: myCollectionsData } = useMyCollectionsQuery({ includePosts: true });
+  const [savedCollectionIds, setSavedCollectionIds] = useState<string[]>([]);
   
   const likeMutation = useLikePostMutation();
   const unlikeMutation = useUnlikePostMutation();
+  const blockUserMutation = useBlockUserMutation();
+  const blockTagMutation = useBlockTagMutation();
+  const blockCategoryMutation = useBlockCategoryMutation();
   
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -43,22 +68,19 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
   const styles = useMemo(() => StyleSheet.create({
     card: {
       backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: CARD_PADDING,
-      marginVertical: 8,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      elevation: 2,
-      borderWidth: 1,
-      borderColor: colors.border,
+      borderRadius: 0,
+      paddingVertical: spacing.md,
+      paddingHorizontal: 0,
+      marginVertical: spacing.xs,
+      marginHorizontal: 0,
+      borderWidth: 0,
     },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 12,
+      paddingHorizontal: spacing.md,
     },
     userInfo: {
       flexDirection: 'row',
@@ -95,12 +117,14 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
       color: colors.text.primary,
       lineHeight: 22,
       marginBottom: 12,
+      paddingHorizontal: spacing.md,
     },
     embedContainer: {
       width: '100%',
       overflow: 'hidden',
-      backgroundColor: colors.surfaceHighlight,
-      borderRadius: 12,
+      backgroundColor: 'transparent',
+      borderRadius: 0,
+      maxHeight: 500,
     },
     webview: {
       backgroundColor: 'transparent',
@@ -122,17 +146,18 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
     tagsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
-      marginTop: 12,
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+      paddingHorizontal: spacing.md,
     },
     tag: {
       backgroundColor: colors.surfaceHighlight,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: borderRadius.md,
     },
     tagText: {
-      fontSize: 12,
+      fontSize: 14,
       color: colors.text.secondary,
       fontWeight: '500',
     },
@@ -144,6 +169,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      paddingHorizontal: spacing.md,
     },
     actions: {
       flexDirection: 'row',
@@ -160,7 +186,37 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
       fontWeight: '500',
     },
     likedText: {
-      color: colors.error,
+      color: colors.primary,
+    },
+    sheetOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      justifyContent: 'flex-end',
+    },
+    sheetContainer: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 16,
+      gap: spacing.sm,
+    },
+    sheetItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+    },
+    sheetIcon: {
+      marginRight: spacing.sm,
+    },
+    sheetText: {
+      fontSize: 16,
+      color: colors.text.primary,
+      fontWeight: '500',
+    },
+    sheetHint: {
+      ...typography.body2,
+      marginLeft: spacing.sm,
+      marginBottom: -spacing.xs,
     },
   }), [colors]);
 
@@ -186,17 +242,55 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
   }, [isScreenFocused]);
 
   const thumbnailUrl = useMemo(() => {
-    if (post.thumbnailUrl) return post.thumbnailUrl;
+    const isSvgPlaceholder = post.thumbnailUrl?.startsWith('data:image/svg+xml');
+
+    // Prefer embed preview if available (often real media thumb)
     if (post.embedHtml) {
       const match = post.embedHtml.match(/<img[^>]+src="([^">]+)"/);
-      if (match) return match[1];
+      if (match?.[1]) {
+        return match[1];
+      }
     }
+
+    if (post.thumbnailUrl && !isSvgPlaceholder) {
+      return post.thumbnailUrl;
+    }
+
     return null;
   }, [post.thumbnailUrl, post.embedHtml]);
 
+  useEffect(() => {
+    const collections = myCollectionsData?.data ?? [];
+    const ids = collections
+      .filter((col) => col.posts?.some((p) => p.postId === post.id))
+      .map((col) => col.id);
+    const hasDiff =
+      ids.length !== savedCollectionIds.length ||
+      ids.some((id, idx) => savedCollectionIds[idx] !== id);
+    if (hasDiff) {
+      setSavedCollectionIds(ids);
+    }
+  }, [myCollectionsData?.data, post.id, savedCollectionIds]);
+
+  const filterFeedAfterBlock = (predicate: (p: Post) => boolean) => {
+    const queries = queryClient.getQueriesData<Post[]>({ queryKey: postsQueryKeys.all });
+    queries.forEach(([key, data]) => {
+      if (Array.isArray(data)) {
+        queryClient.setQueryData(
+          key,
+          data.filter((item) => !predicate(item)),
+        );
+      }
+    });
+
+    if (predicate(post)) {
+      queryClient.removeQueries({ queryKey: postsQueryKeys.detail(post.id) });
+    }
+  };
+
   const handleLike = () => {
     if (!isAuthenticated) {
-      Alert.alert('Giriş Yapmalısınız', 'Beğenmek için lütfen giriş yapın.');
+      Alert.alert('Giris yapmalisin', 'Begenmek icin lutfen giris yap.');
       return;
     }
 
@@ -219,6 +313,108 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
         },
       });
     }
+  };
+
+  const confirmAndBlockUser = () => {
+    if (!post.userId) return;
+    setIsActionsVisible(false);
+    setIsBlockSheetVisible(false);
+    Alert.alert('Kullaniciyi engelle', `@${post.userName} engellensin mi?`, [
+      { text: 'Vazgec', style: 'cancel' },
+      {
+        text: 'Engelle',
+        style: 'destructive',
+        onPress: () => {
+          blockUserMutation.mutate(post.userId, {
+            onSuccess: () => {
+              filterFeedAfterBlock((p) => p.userId === post.userId);
+              updateBlocksCache((prev) => {
+                if (!prev) return prev;
+                const exists = prev.users?.some((u) => u.id === post.userId);
+                if (exists) return prev;
+                return {
+                  ...prev,
+                  users: [...(prev.users ?? []), { id: post.userId, userName: post.userName, profileImageUrl: null }],
+                };
+              });
+              setIsActionsVisible(false);
+              if (isDetailView && navigation.canGoBack()) {
+                navigation.goBack();
+              }
+              Alert.alert('Engellendi', `@${post.userName} engellendi.`);
+            },
+            onError: () => Alert.alert('Islem basarisiz', 'Engelleme tamamlanamadi.'),
+          });
+        },
+      },
+    ]);
+  };
+
+  const confirmAndBlockTag = () => {
+    const tag = selectedTag ?? post.tags?.[0];
+    if (!tag) return;
+    setIsActionsVisible(false);
+    setIsBlockSheetVisible(false);
+    Alert.alert('Etiketi engelle', `#${tag} engellensin mi?`, [
+      { text: 'Vazgec', style: 'cancel' },
+      {
+        text: 'Engelle',
+        style: 'destructive',
+        onPress: () => {
+          blockTagMutation.mutate(tag, {
+            onSuccess: () => {
+              filterFeedAfterBlock((p) => p.tags?.includes(tag));
+              updateBlocksCache((prev) => {
+                if (!prev) return prev;
+                const exists = prev.tags?.includes(tag);
+                return { ...prev, tags: exists ? prev.tags : [...(prev.tags ?? []), tag] };
+              });
+              setIsActionsVisible(false);
+              if (isDetailView && navigation.canGoBack()) {
+                navigation.goBack();
+              }
+              Alert.alert('Engellendi', `#${tag} engellendi.`);
+            },
+            onError: () => Alert.alert('Islem basarisiz', 'Engelleme tamamlanamadi.'),
+          });
+        },
+      },
+    ]);
+  };
+
+  const confirmAndBlockCategory = () => {
+    if (!post.categoryId) return;
+    setIsActionsVisible(false);
+    setIsBlockSheetVisible(false);
+    Alert.alert('Kategoriyi engelle', `${post.categoryName ?? 'Kategori'} engellensin mi?`, [
+      { text: 'Vazgec', style: 'cancel' },
+      {
+        text: 'Engelle',
+        style: 'destructive',
+        onPress: () => {
+          blockCategoryMutation.mutate(post.categoryId as string, {
+            onSuccess: () => {
+              filterFeedAfterBlock((p) => p.categoryId === post.categoryId);
+              updateBlocksCache((prev) => {
+                if (!prev) return prev;
+                const exists = prev.categories?.some((c) => c.id === post.categoryId);
+                if (exists) return prev;
+                return {
+                  ...prev,
+                  categories: [...(prev.categories ?? []), { id: post.categoryId!, name: post.categoryName ?? post.categoryId! }],
+                };
+              });
+              setIsActionsVisible(false);
+              if (isDetailView && navigation.canGoBack()) {
+                navigation.goBack();
+              }
+              Alert.alert('Engellendi', 'Kategori engellendi.');
+            },
+            onError: () => Alert.alert('Islem basarisiz', 'Engelleme tamamlanamadi.'),
+          });
+        },
+      },
+    ]);
   };
 
   const handlePress = () => {};
@@ -340,6 +536,34 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
 
   const showPosterOverlay = (!isScreenFocused && !isDetailView) || isLoadingEmbed || !hasLoadedOnce;
 
+  const handleCopyLink = async () => {
+    if (!post.sourceUrl) {
+      setIsActionsVisible(false);
+      return;
+    }
+    try {
+      await Share.share({ message: post.sourceUrl });
+    } catch (error) {
+      Alert.alert('Link kopyalanamadi', 'Lutfen tekrar deneyin.');
+    } finally {
+      setIsActionsVisible(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!post.sourceUrl) {
+      setIsActionsVisible(false);
+      return;
+    }
+    try {
+      await Linking.openURL(post.sourceUrl);
+    } catch (error) {
+      Alert.alert('Indirme baslatilamadi', 'Linke erisilemiyor.');
+    } finally {
+      setIsActionsVisible(false);
+    }
+  };
+
   return (
     <View style={styles.card}>
       <Pressable onPress={handlePress}>
@@ -353,7 +577,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
               <Text style={styles.date}>{new Date(post.createdAt).toLocaleDateString('tr-TR')}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.moreButton}>
+          <TouchableOpacity style={styles.moreButton} onPress={() => setIsActionsVisible(true)}>
             <Ionicons name="ellipsis-horizontal" size={20} color={colors.text.tertiary} />
           </TouchableOpacity>
         </View>
@@ -426,7 +650,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
           <View style={styles.tagsContainer}>
             {post.tags.map((tag, index) => (
               <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>#{tag}</Text>
+                <Text style={styles.tagText}>{tag}</Text>
               </View>
             ))}
           </View>
@@ -439,9 +663,9 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
               onPress={handleLike}
             >
               <Ionicons 
-                name={isLiked ? "heart" : "heart-outline"} 
+                name={isLiked ? "arrow-up" : "arrow-up-outline"} 
                 size={24} 
-                color={isLiked ? colors.error : colors.text.secondary} 
+                color={isLiked ? '#1DA1F2' : colors.text.secondary} 
               />
               <Text style={[styles.actionText, isLiked && styles.likedText]}>
                 {likeCount}
@@ -468,7 +692,11 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
                 setIsCollectionModalVisible(true);
               }}
             >
-              <Ionicons name="bookmark-outline" size={22} color={colors.text.secondary} />
+              <Ionicons
+                name={savedCollectionIds.length > 0 ? 'bookmark' : 'bookmark-outline'}
+                size={22}
+                color={savedCollectionIds.length > 0 ? '#1DA1F2' : colors.text.secondary}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton}>
@@ -478,10 +706,115 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
         </View>
       </Pressable>
 
+      <Modal visible={isActionsVisible} transparent animationType="slide" onRequestClose={() => setIsActionsVisible(false)}>
+        <Pressable style={styles.sheetOverlay} onPress={() => setIsActionsVisible(false)}>
+          <Pressable style={[styles.sheetContainer, { backgroundColor: colors.surface }]} onPress={() => {}}>
+            <TouchableOpacity style={styles.sheetItem} onPress={handleCopyLink}>
+              <Ionicons name="link-outline" size={22} color={colors.text.primary} style={styles.sheetIcon} />
+              <Text style={styles.sheetText}>Linki kopyala</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sheetItem} onPress={handleDownload}>
+              <Ionicons name="download-outline" size={22} color={colors.text.primary} style={styles.sheetIcon} />
+              <Text style={styles.sheetText}>Medyayi indir</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sheetItem}
+              onPress={() => {
+                setIsActionsVisible(false);
+                setIsBlockSheetVisible(true);
+              }}
+            >
+              <Ionicons name="hand-left-outline" size={22} color={colors.error} style={styles.sheetIcon} />
+              <Text style={[styles.sheetText, { color: colors.error }]}>Engelle...</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={isBlockSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setIsBlockSheetVisible(false);
+          setShowTagPicker(false);
+        }}
+      >
+        <Pressable
+          style={styles.sheetOverlay}
+          onPress={() => {
+            setIsBlockSheetVisible(false);
+            setShowTagPicker(false);
+          }}
+        >
+          <Pressable
+            style={[styles.sheetContainer, { backgroundColor: colors.surface }]}
+            onPress={() => {}}
+          >
+            <TouchableOpacity style={styles.sheetItem} onPress={confirmAndBlockUser}>
+              <Ionicons name="person-remove-outline" size={22} color={colors.error} style={styles.sheetIcon} />
+              <Text style={[styles.sheetText, { color: colors.error }]}>Kullaniciyi engelle</Text>
+            </TouchableOpacity>
+            {post.tags?.length ? (
+              <>
+                <TouchableOpacity
+                  style={styles.sheetItem}
+                  onPress={() => {
+                    setShowTagPicker((prev) => !prev);
+                    if (!selectedTag) {
+                      setSelectedTag(post.tags?.[0] ?? null);
+                    }
+                  }}
+                >
+                  <Ionicons name="pricetag-outline" size={22} color={colors.error} style={styles.sheetIcon} />
+                  <Text style={[styles.sheetText, { color: colors.error }]}>Etiketi engelle</Text>
+                </TouchableOpacity>
+                {showTagPicker && (
+                  <>
+                    <Text style={[styles.sheetHint, { color: colors.text.secondary }]}>
+                      Hangi etiketi engellemek istersin?
+                    </Text>
+                    {post.tags.map((tag) => {
+                      const selected = selectedTag === tag;
+                      return (
+                        <TouchableOpacity
+                          key={tag}
+                          style={styles.sheetItem}
+                          onPress={() => setSelectedTag(tag)}
+                        >
+                          <Ionicons
+                            name={selected ? 'radio-button-on' : 'radio-button-off'}
+                            size={20}
+                            color={selected ? colors.primary : colors.text.secondary}
+                            style={styles.sheetIcon}
+                          />
+                          <Text style={styles.sheetText}>#{tag}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    <TouchableOpacity style={styles.sheetItem} onPress={confirmAndBlockTag}>
+                      <Ionicons name="pricetag-outline" size={22} color={colors.error} style={styles.sheetIcon} />
+                      <Text style={[styles.sheetText, { color: colors.error }]}>Secili etiketi engelle</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </>
+            ) : null}
+            {post.categoryId ? (
+              <TouchableOpacity style={styles.sheetItem} onPress={confirmAndBlockCategory}>
+                <Ionicons name="folder-open-outline" size={22} color={colors.error} style={styles.sheetIcon} />
+                <Text style={[styles.sheetText, { color: colors.error }]}>Kategoriyi engelle</Text>
+              </TouchableOpacity>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <AddToCollectionModal
         visible={isCollectionModalVisible}
         onClose={() => setIsCollectionModalVisible(false)}
         postId={post.id}
+        onMembershipChange={(ids) => setSavedCollectionIds(Array.from(new Set(ids)))}
       />
       <CommentsModal visible={isCommentsVisible} onClose={() => setIsCommentsVisible(false)} postId={post.id} />
     </View>

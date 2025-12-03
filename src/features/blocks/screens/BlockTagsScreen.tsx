@@ -1,33 +1,44 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing, typography, borderRadius } from '@/core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
-import { useBlockTagMutation, useUnblockTagMutation } from '../data/useBlocksMutations';
+import { useUnblockTagMutation } from '../data/useBlocksMutations';
+import { useBlockedListQuery, useUpdateBlockedCache } from '../data/useBlocksQuery';
 
 export const BlockTagsScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const [tag, setTag] = useState('');
-  const blockMutation = useBlockTagMutation();
   const unblockMutation = useUnblockTagMutation();
+  const { data, isLoading: isFetching } = useBlockedListQuery();
+  const updateCache = useUpdateBlockedCache();
+  const tags = data?.tags ?? [];
 
-  const handleAction = (action: 'block' | 'unblock') => {
-    const value = tag.trim();
-    if (!value) return;
-    const mutateFn = action === 'block' ? blockMutation.mutateAsync : unblockMutation.mutateAsync;
-    mutateFn(value)
-      .then(() => {
-        Alert.alert('Başarılı', action === 'block' ? 'Etiket engellendi' : 'Engel kaldırıldı');
-      })
-      .catch(() => Alert.alert('Hata', 'İşlem gerçekleştirilemedi'));
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const handleUnblock = (tag: string) => {
+    if (!tag) return;
+    Alert.alert('Engeli kaldir', `#${tag} engel kaldirilsin mi?`, [
+      { text: 'Vazgec', style: 'cancel' },
+      {
+        text: 'Kaldir',
+        style: 'destructive',
+        onPress: () => {
+          unblockMutation.mutate(tag, {
+            onSuccess: () => {
+              updateCache((prev) => (prev ? { ...prev, tags: (prev.tags ?? []).filter((t) => t !== tag) } : prev));
+              Alert.alert('Engel kaldirildi', `#${tag} artik engelli degil.`);
+            },
+            onError: () => Alert.alert('Hata', 'Islem gerceklestirilemedi'),
+          });
+        },
+      },
+    ]);
   };
-
-  const isLoading = blockMutation.isPending || unblockMutation.isPending;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -40,90 +51,76 @@ export const BlockTagsScreen = () => {
       </View>
 
       <View style={styles.body}>
-        <Text style={[styles.label, { color: colors.text.secondary }]}>Etiket</Text>
-        <TextInput
-          value={tag}
-          onChangeText={setTag}
-          placeholder="#etiket veya etiket"
-          placeholderTextColor={colors.text.tertiary}
-          style={[
-            styles.input,
-            { borderColor: colors.border, backgroundColor: colors.surface, color: colors.text.primary },
-          ]}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.error, opacity: isLoading ? 0.6 : 1 }]}
-            onPress={() => handleAction('block')}
-            disabled={isLoading}
-          >
-            {isLoading && blockMutation.isPending ? (
-              <ActivityIndicator color={colors.surface} />
-            ) : (
-              <Text style={[styles.buttonText, { color: colors.surface }]}>Engelle</Text>
+        {isFetching ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <FlatList
+            data={tags}
+            keyExtractor={(item) => item}
+            ListEmptyComponent={
+              <Text style={[styles.empty, { color: colors.text.tertiary }]}>Engellenmis etiket yok.</Text>
+            }
+            renderItem={({ item }) => (
+              <View style={[styles.tagRow, { borderColor: colors.border }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+                  <Ionicons name="pricetag-outline" size={18} color={colors.text.secondary} />
+                  <Text style={[styles.tagText, { color: colors.text.primary }]}>#{item}</Text>
+                </View>
+                <TouchableOpacity onPress={() => handleUnblock(item)} disabled={unblockMutation.isPending}>
+                  {unblockMutation.isPending ? (
+                    <ActivityIndicator color={colors.error} />
+                  ) : (
+                    <Ionicons name="close-circle" size={22} color={colors.error} />
+                  )}
+                </TouchableOpacity>
+              </View>
             )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.primary, opacity: isLoading ? 0.6 : 1 }]}
-            onPress={() => handleAction('unblock')}
-            disabled={isLoading}
-          >
-            {isLoading && unblockMutation.isPending ? (
-              <ActivityIndicator color={colors.surface} />
-            ) : (
-              <Text style={[styles.buttonText, { color: colors.surface }]}>Engeli Kaldır</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+            ItemSeparatorComponent={() => <View style={{ height: spacing.xs }} />}
+          />
+        )}
       </View>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-  },
-  title: {
-    ...typography.subtitle1,
-    fontWeight: '700',
-  },
-  body: {
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  label: {
-    ...typography.caption,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    ...typography.body2,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  buttonText: {
-    ...typography.bodyBold,
-  },
-});
+const createStyles = (colors: any) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    header: {
+      height: 56,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.md,
+    },
+    title: {
+      ...typography.subtitle1,
+      fontWeight: '700',
+    },
+    body: {
+      padding: spacing.md,
+      gap: spacing.md,
+      flex: 1,
+    },
+    tagRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderRadius: borderRadius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    tagText: {
+      ...typography.body,
+    },
+    empty: {
+      ...typography.body2,
+      textAlign: 'center',
+      marginTop: spacing.md,
+    },
+  });
+
+export default BlockTagsScreen;

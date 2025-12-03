@@ -1,6 +1,12 @@
 import { apiClient } from '@/core/network/apiClient';
 import { ApiError, ApiResult } from '@/core/types/api';
-import type { Category, CategoryListParams, CreateCategoryRequest, UpdateCategoryRequest, CategoryFollowStatus } from '../domain/types';
+import type {
+  Category,
+  CategoryListParams,
+  CreateCategoryRequest,
+  UpdateCategoryRequest,
+  CategoryFollowStatus,
+} from '../domain/types';
 
 const endpoint = '/Categories';
 
@@ -33,31 +39,74 @@ export const getCategoryById = async (id: string) => {
 };
 
 export const createCategory = async (data: CreateCategoryRequest) => {
-  const response = await apiClient.post<ApiResult<string>>(endpoint, data);
+  const response = await apiClient.post<ApiResult<Category>>(endpoint, data);
   const payload = response.data;
 
-  if (!payload.isSuccess) {
+  if (!payload.isSuccess || !payload.data) {
     throw new ApiError(payload.message ?? 'Kategori oluşturulamadı', {
       status: response.status,
       errors: payload.errors ?? null,
     });
   }
 
-  return payload.data ?? '';
+  return payload.data;
 };
 
 export const updateCategory = async (id: string, data: UpdateCategoryRequest) => {
-  const response = await apiClient.put<ApiResult<string>>(`${endpoint}`, { ...data, id });
+  const response = await apiClient.put<ApiResult<Category>>(`${endpoint}/${id}`, data);
   const payload = response.data;
 
-  if (!payload.isSuccess) {
+  if (!payload.isSuccess || !payload.data) {
     throw new ApiError(payload.message ?? 'Kategori güncellenemedi', {
       status: response.status,
       errors: payload.errors ?? null,
     });
   }
 
-  return payload.data ?? '';
+  return payload.data;
+};
+
+export const uploadCategoryIcon = async (categoryId: string, file: { uri: string; name?: string; type?: string }) => {
+  const formData = new FormData();
+  formData.append('file', {
+    uri: file.uri,
+    name: file.name ?? 'category-icon.jpg',
+    type: file.type ?? 'image/jpeg',
+  } as any);
+
+  const request = async (path: string, method: 'post' | 'put') => {
+    const response =
+      method === 'post'
+        ? await apiClient.post<ApiResult<Category>>(path, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+        : await apiClient.put<ApiResult<Category>>(path, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+
+    const payload = response.data;
+    if (!payload.isSuccess || !payload.data) {
+      throw new ApiError(payload.message ?? 'Kategori ikonu yüklenemedi', {
+        status: response.status,
+        errors: payload.errors ?? null,
+      });
+    }
+    return payload.data;
+  };
+
+  try {
+    // Primary route (doc): /media/categories/{id}/icon
+    return await request(`/Media/categories/${categoryId}/icon`, 'post');
+  } catch (error: any) {
+    const status = error?.response?.status;
+    const shouldFallback = status === 404 || status === 405;
+    if (!shouldFallback) {
+      throw error;
+    }
+  }
+
+  // Alias route: /categories/{id}/icon
+  return request(`/Categories/${categoryId}/icon`, 'put');
 };
 
 export const deleteCategory = async (id: string) => {

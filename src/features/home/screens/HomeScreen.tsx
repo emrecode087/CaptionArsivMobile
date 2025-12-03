@@ -23,7 +23,7 @@ export const HomeScreen = memo(({ filter = 'forYou', onScroll, contentContainerS
       backgroundColor: colors.background,
     },
     listContent: {
-      padding: spacing.md,
+      paddingHorizontal: 0,
       paddingBottom: 100,
     },
     emptyContainer: {

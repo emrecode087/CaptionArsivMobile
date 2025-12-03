@@ -24,8 +24,9 @@ interface RegisterScreenProps {
 }
 
 export const RegisterScreen = memo<RegisterScreenProps>(({ navigation }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const logoSource = isDark ? require('../../../../assets/logo.png') : require('../../../../assets/logo_light.png');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,7 +76,7 @@ export const RegisterScreen = memo<RegisterScreenProps>(({ navigation }) => {
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Image 
-              source={require('../../../../assets/logo.png')} 
+              source={logoSource} 
               style={styles.logoImage} 
               resizeMode="contain"
             />

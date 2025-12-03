@@ -2,6 +2,7 @@ export interface Category {
   id: string;
   name: string;
   description?: string | null;
+  iconUrl?: string | null;
   isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -31,4 +32,3 @@ export interface UpdateCategoryRequest {
   name: string;
   description?: string;
 }
-
