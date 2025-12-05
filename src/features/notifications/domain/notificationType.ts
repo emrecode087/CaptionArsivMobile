@@ -23,13 +23,14 @@ export const resolveNotificationCategory = (
   }
 
   if (typeof type === 'string') {
-    const normalized = type.toLowerCase();
+    const normalized = String(type).toLowerCase();
     if (normalized.includes('like')) return 'postLike';
     if (normalized.includes('comment')) return 'postComment';
     if (normalized.includes('follow')) return 'follow';
   }
 
-  const hintText = `${title ?? ''} ${body ?? ''}`.toLowerCase();
+  const hint = `${title ?? ''} ${body ?? ''}`;
+  const hintText = hint.toString().toLowerCase();
   if (textContains(hintText, 'beğen') || textContains(hintText, 'begen')) return 'postLike';
   if (textContains(hintText, 'yorum')) return 'postComment';
   if (textContains(hintText, 'takip')) return 'follow';

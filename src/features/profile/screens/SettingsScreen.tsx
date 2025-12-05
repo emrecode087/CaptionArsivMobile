@@ -10,12 +10,14 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '@/core/theme/useTheme';
 import { spacing, typography, borderRadius } from '@/core/theme/tokens';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 import { useDeleteAccountMutation, useUpdateUserMutation } from '@/features/profile/data/useProfileMutations';
 import { Button } from '@/core/ui/Button';
 import { Input } from '@/core/ui/Input';
+import { notificationService } from '@/features/notifications/services/notificationService';
 
 const SectionHeader = ({ title }: { title: string }) => {
   const { colors } = useTheme();
@@ -69,9 +71,9 @@ export const SettingsScreen = ({ navigation }: any) => {
   const user = useAuthStore((state) => state.user);
   const updateUserMutation = useUpdateUserMutation();
   const deleteAccountMutation = useDeleteAccountMutation();
+  const queryClient = useQueryClient();
 
   const [followThreadOnReply, setFollowThreadOnReply] = useState<boolean>(user?.autoFollowOnReply ?? false);
-  const [clearCacheOnAction, setClearCacheOnAction] = useState(false);
 
   const [darkMode, setDarkMode] = useState(themeMode === 'dark');
 
@@ -135,6 +137,11 @@ export const SettingsScreen = ({ navigation }: any) => {
     updateUserMutation.mutate(
       { userId: user.id, payload: { pushNotificationsEnabled: value } },
       {
+        onSuccess: () => {
+          if (value) {
+            notificationService.registerDevice();
+          }
+        },
         onError: () => setPushNotifications(previous),
       },
     );
@@ -192,6 +199,29 @@ export const SettingsScreen = ({ navigation }: any) => {
     );
   };
 
+  const handleClearCache = () => {
+    Alert.alert(
+      'Önbelleği Temizle',
+      'Uygulama önbelleği temizlenecek. Bu işlem oturumunu kapatmaz ancak bazı verilerin yeniden yüklenmesi gerekebilir.',
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Temizle',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await queryClient.cancelQueries();
+              queryClient.clear();
+              Alert.alert('Başarılı', 'Önbellek başarıyla temizlendi.');
+            } catch (error) {
+              Alert.alert('Hata', 'Önbellek temizlenirken bir sorun oluştu.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleDeleteAccount = () => {
     if (!user) {
       Alert.alert('Oturum bulunamadi', 'Hesap silmek icin once giris yap.');
@@ -229,7 +259,7 @@ export const SettingsScreen = ({ navigation }: any) => {
           />
           <Row
             title="Önbelleği temizle"
-            onPress={() => setClearCacheOnAction(true)}
+            onPress={handleClearCache}
             showDivider={false}
           />
         </View>

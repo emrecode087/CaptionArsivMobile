@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { spacing, typography } from '@/core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
 
@@ -18,20 +18,22 @@ export const SubMenu = ({ activeTab, onTabPress }: SubMenuProps) => {
       backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
+      marginTop: -spacing.md, // pull menu closer to header
     },
-    contentContainer: {
-      paddingHorizontal: spacing.md,
+    tabsRow: {
+      flexDirection: 'row',
+      width: '100%',
     },
     tab: {
+      flex: 1,
       paddingVertical: spacing.md,
-      paddingHorizontal: spacing.md,
-      marginRight: spacing.sm,
       alignItems: 'center',
       justifyContent: 'center',
       position: 'relative',
     },
     tabText: {
       ...typography.body,
+      fontSize: 13,
       fontWeight: '600',
       color: colors.text.secondary,
     },
@@ -41,8 +43,8 @@ export const SubMenu = ({ activeTab, onTabPress }: SubMenuProps) => {
     activeIndicator: {
       position: 'absolute',
       bottom: 0,
-      left: spacing.md,
-      right: spacing.md,
+      left: 0,
+      right: 0,
       height: 3,
       backgroundColor: colors.primary,
       borderRadius: 1.5,
@@ -58,15 +60,12 @@ export const SubMenu = ({ activeTab, onTabPress }: SubMenuProps) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
-      >
+      <View style={styles.tabsRow}>
         {tabs.map((tab) => (
           <TouchableOpacity
             key={tab.id}
             style={styles.tab}
+            activeOpacity={0.8}
             onPress={() => onTabPress(tab.id)}
           >
             <Text style={[
@@ -78,7 +77,7 @@ export const SubMenu = ({ activeTab, onTabPress }: SubMenuProps) => {
             {activeTab === tab.id && <View style={styles.activeIndicator} />}
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };

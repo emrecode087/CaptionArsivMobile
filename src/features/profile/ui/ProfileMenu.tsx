@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, Animated, Dimensions } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, TouchableWithoutFeedback, Animated, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +20,9 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
   const { colors, themeMode, setThemeMode } = useTheme();
   const { user } = useAuthStore();
   const [showThemeOptions, setShowThemeOptions] = useState(false);
+  const [isMounted, setIsMounted] = useState(visible);
+  const backdropOpacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(visible ? 0 : 220)).current;
   const updateUserMutation = useUpdateUserMutation();
 
   const styles = useMemo(() => StyleSheet.create({
@@ -92,6 +95,39 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
     },
   }), [colors, insets.bottom]);
 
+  useEffect(() => {
+    if (visible) {
+      setIsMounted(true);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (isMounted) {
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 220,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => setIsMounted(false));
+    }
+  }, [visible, isMounted, backdropOpacity, sheetTranslateY]);
+
   const handleNavigation = (screen: string) => {
     onClose();
     navigation.navigate(screen);
@@ -127,15 +163,15 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
 
   return (
     <Modal
-      visible={visible}
+      visible={isMounted}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
+        <Animated.View style={[styles.overlay, { opacity: backdropOpacity }]}>
           <TouchableWithoutFeedback>
-            <View style={styles.container}>
+            <Animated.View style={[styles.container, { transform: [{ translateY: sheetTranslateY }] }]}>
               <View style={styles.header}>
                 <View style={styles.handle} />
               </View>
@@ -160,7 +196,7 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
                 <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.menuItem} onPress={() => { /* Navigate to Feedback */ onClose(); }}>
+              <TouchableOpacity style={styles.menuItem} onPress={() => handleNavigation('SendFeedback')}>
                 <Ionicons name="chatbox-outline" size={24} color={colors.text.primary} />
                 <Text style={styles.menuText}>Geri Bildirim Gönder</Text>
                 <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
@@ -182,9 +218,9 @@ export const ProfileMenu = ({ visible, onClose }: ProfileMenuProps) => {
                 </View>
               )}
 
-            </View>
+            </Animated.View>
           </TouchableWithoutFeedback>
-        </View>
+        </Animated.View>
       </TouchableWithoutFeedback>
     </Modal>
   );

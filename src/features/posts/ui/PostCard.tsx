@@ -10,13 +10,19 @@ import {
   Pressable,
   Image,
   Modal,
+  ActivityIndicator,
+  Animated,
+  Easing,
   Alert,
   Share,
+  TouchableWithoutFeedback,
 } from 'react-native';
-import { WebView } from 'react-native-webview';
+import WebView, { type WebViewNavigation } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
 
 import type { Post } from '../domain/types';
 import { borderRadius, spacing, typography } from '@/core/theme/tokens';
@@ -35,6 +41,51 @@ interface PostCardProps {
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+
+const useBottomSheetAnimation = (visible: boolean, hiddenTranslateY = 220) => {
+  const [isMounted, setIsMounted] = useState(visible);
+  const backdropOpacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(visible ? 0 : hiddenTranslateY)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setIsMounted(true);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (isMounted) {
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: hiddenTranslateY,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => setIsMounted(false));
+    }
+  }, [visible, isMounted, backdropOpacity, sheetTranslateY, hiddenTranslateY]);
+
+  return {
+    isMounted,
+    backdropStyle: { opacity: backdropOpacity },
+    sheetStyle: { transform: [{ translateY: sheetTranslateY }] },
+  };
+};
 
 export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => {
   const navigation = useNavigation<any>();
@@ -61,6 +112,8 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
   const blockUserMutation = useBlockUserMutation();
   const blockTagMutation = useBlockTagMutation();
   const blockCategoryMutation = useBlockCategoryMutation();
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
   
   const [isLiked, setIsLiked] = useState(post.isLikedByCurrentUser);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -189,8 +242,11 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
       color: colors.primary,
     },
     sheetOverlay: {
-      flex: 1,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    sheetRoot: {
+      flex: 1,
       justifyContent: 'flex-end',
     },
     sheetContainer: {
@@ -218,7 +274,29 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
       marginLeft: spacing.sm,
       marginBottom: -spacing.xs,
     },
+    downloadOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0,0,0,0.45)',
+    },
+    downloadBox: {
+      minWidth: 220,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
+    downloadText: {
+      ...typography.body1,
+      color: colors.text.primary,
+      textAlign: 'center',
+    },
   }), [colors]);
+
+  const actionsSheet = useBottomSheetAnimation(isActionsVisible);
+  const blockSheet = useBottomSheetAnimation(isBlockSheetVisible);
 
   useEffect(() => {
     logger.log('[PostCard] Post updated - id:', post.id, 'isLikedByCurrentUser:', post.isLikedByCurrentUser, 'likeCount:', post.likeCount);
@@ -550,20 +628,201 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
     }
   };
 
+  const getTweetId = (url: string) => {
+    try {
+      const parsed = new URL(url);
+      const segments = parsed.pathname.split('/').filter(Boolean);
+      const statusIndex = segments.indexOf('status');
+      if (statusIndex !== -1 && segments[statusIndex + 1]) {
+        return segments[statusIndex + 1];
+      }
+      // Some embeds use /i/web/status/ID
+      const altIndex = segments.indexOf('web');
+      if (segments[0] === 'i' && altIndex !== -1 && segments[altIndex + 1] === 'status' && segments[altIndex + 2]) {
+        return segments[altIndex + 2];
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const extractMediaUrlFromVXResponse = (payload: any): string | null => {
+    if (!payload) return null;
+
+    const pickFromVideos = (videos?: any[]) => {
+      if (!Array.isArray(videos)) return null;
+      const mp4 = videos.find((v) => typeof v?.url === 'string' && v.url.includes('.mp4'));
+      return mp4?.url ?? null;
+    };
+
+    const selectVariant = (variants?: any[]) => {
+      if (!Array.isArray(variants)) return null;
+      const mp4s = variants.filter((v) => typeof v?.url === 'string' && v?.content_type?.includes('mp4'));
+      if (mp4s.length === 0) return null;
+      mp4s.sort((a, b) => (b?.bitrate ?? 0) - (a?.bitrate ?? 0));
+      return mp4s[0].url as string;
+    };
+
+    const pickFromArray = (arr?: any[]) => {
+      if (!Array.isArray(arr)) return null;
+      for (const item of arr) {
+        if (item?.type === 'video' || item?.type === 'gif') {
+          if (typeof item?.url === 'string') return item.url;
+          const v = selectVariant(item?.variants);
+          if (v) return v;
+        }
+      }
+      return null;
+    };
+
+    const mediaUrl =
+      pickFromArray(payload.media_extended) ||
+      pickFromArray(payload.media) ||
+      pickFromArray(payload?.tweet?.media_extended) ||
+      pickFromArray(payload?.tweet?.media) ||
+      pickFromVideos(payload?.videos) ||
+      pickFromVideos(payload?.tweet?.videos) ||
+      selectVariant(payload?.tweet?.media_extended?.[0]?.variants) ||
+      selectVariant(payload?.tweet?.media?.[0]?.variants) ||
+      (typeof payload?.tweet?.video_url === 'string' ? payload.tweet.video_url : null) ||
+      (typeof payload?.tweet?.hls_url === 'string' ? payload.tweet.hls_url : null) ||
+      (typeof payload.hdurl === 'string' ? payload.hdurl : null) ||
+      (typeof payload.url === 'string' ? payload.url : null) ||
+      (Array.isArray(payload.mediaURLs) && typeof payload.mediaURLs[0] === 'string' ? payload.mediaURLs[0] : null) ||
+      (Array.isArray(payload?.tweet?.mediaURLs) && typeof payload.tweet.mediaURLs[0] === 'string' ? payload.tweet.mediaURLs[0] : null) ||
+      (typeof payload?.media_url === 'string' ? payload.media_url : null);
+
+    return mediaUrl;
+  };
+
   const handleDownload = async () => {
+    if (isDownloading) return;
     if (!post.sourceUrl) {
       setIsActionsVisible(false);
       return;
     }
     try {
-      await Linking.openURL(post.sourceUrl);
+      setIsDownloading(true);
+      setDownloadProgress(0);
+
+      const tweetId = getTweetId(post.sourceUrl);
+      if (!tweetId) {
+        throw new Error('tweet_id_not_found');
+      }
+
+      let path = '';
+      try {
+        const parsed = new URL(post.sourceUrl);
+        path = parsed.pathname;
+      } catch (e) {
+        path = `/Twitter/status/${tweetId}`;
+      }
+
+      const endpoints = [
+        `https://api.vxtwitter.com${path}`,
+        `https://api.fxtwitter.com${path}`,
+      ];
+
+      let mediaUrl: string | null = null;
+      let lastStatus: number | null = null;
+      let lastPayload: any = null;
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            headers: { Accept: 'application/json' },
+          });
+          lastStatus = response.status;
+          if (!response.ok) {
+            continue;
+          }
+          const data = await response.json();
+          lastPayload = data;
+          mediaUrl = extractMediaUrlFromVXResponse(data);
+          if (mediaUrl) {
+            break;
+          }
+        } catch (err) {
+          logger.error('[PostCard] fetch media endpoint failed', endpoint, err);
+        }
+      }
+
+      if (!mediaUrl) {
+        const err = new Error('media_missing');
+        (err as any).status = lastStatus;
+        (err as any).payloadKeys = lastPayload ? Object.keys(lastPayload) : null;
+        logger.error('[PostCard] media not found in payload', {
+          status: lastStatus,
+          payloadKeys: lastPayload ? Object.keys(lastPayload) : null,
+        });
+        throw err;
+      }
+
+      const permission = await MediaLibrary.requestPermissionsAsync(false, ['video']);
+      if (!permission.granted) {
+        Alert.alert('Izin gerekli', 'Videoyu kaydetmek icin galeri erisimi izni vermelisiniz.');
+        return;
+      }
+
+      const baseDir = FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+      if (!baseDir) {
+        throw new Error('document_directory_unavailable');
+      }
+
+      const timestamp = Date.now();
+      const tempUri = `${baseDir}caption_arsiv_tmp_${timestamp}.mp4`;
+      const finalUri = `${baseDir}caption_arsiv_${timestamp}.mp4`;
+
+      const downloadResumable = FileSystem.createDownloadResumable(
+        mediaUrl,
+        tempUri,
+        {},
+        (progress) => {
+          if (progress.totalBytesExpectedToWrite) {
+            setDownloadProgress(progress.totalBytesWritten / progress.totalBytesExpectedToWrite);
+          } else {
+            setDownloadProgress(null);
+          }
+        }
+      );
+
+      const downloadRes = await downloadResumable.downloadAsync();
+      if (!downloadRes || downloadRes.status !== 200) {
+        throw new Error('Download failed');
+      }
+
+      await FileSystem.copyAsync({ from: downloadRes.uri, to: finalUri });
+      await FileSystem.deleteAsync(downloadRes.uri, { idempotent: true }).catch(() => {});
+
+      const asset = await MediaLibrary.createAssetAsync(finalUri);
+      const album = await MediaLibrary.getAlbumAsync('CaptionArsiv');
+      if (album == null) {
+        await MediaLibrary.createAlbumAsync('CaptionArsiv', asset, false);
+      } else {
+        // Copy instead of move to ensure it appears as a new item at the end of the gallery
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
+      }
+
+      await FileSystem.deleteAsync(finalUri, { idempotent: true }).catch(() => {});
+
+      Alert.alert('Basarili', 'Video galeriye kaydedildi.');
     } catch (error) {
-      Alert.alert('Indirme baslatilamadi', 'Linke erisilemiyor.');
+      logger.error('[PostCard] download failed', {
+        error,
+        tweetId: post.sourceUrl ? getTweetId(post.sourceUrl) : null,
+        sourceUrl: post.sourceUrl,
+      });
+      Alert.alert(
+        'Indirme basarisiz',
+        'Video linki olusturulamadi. Lutfen daha sonra tekrar deneyin veya tarayicida acmayi deneyin.'
+      );
     } finally {
+      setIsDownloading(false);
+      setDownloadProgress(null);
       setIsActionsVisible(false);
     }
   };
-
   return (
     <View style={styles.card}>
       <Pressable onPress={handlePress}>
@@ -613,7 +872,7 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
               setIsLoadingEmbed(false);
               setHasLoadedOnce(true);
             }}
-            onShouldStartLoadWithRequest={(request) => {
+            onShouldStartLoadWithRequest={(request: WebViewNavigation) => {
               const { url } = request;
               
               // Allow standard web content to load
@@ -706,16 +965,19 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
         </View>
       </Pressable>
 
-      <Modal visible={isActionsVisible} transparent animationType="slide" onRequestClose={() => setIsActionsVisible(false)}>
-        <Pressable style={styles.sheetOverlay} onPress={() => setIsActionsVisible(false)}>
-          <Pressable style={[styles.sheetContainer, { backgroundColor: colors.surface }]} onPress={() => {}}>
+      <Modal visible={actionsSheet.isMounted} transparent animationType="none" onRequestClose={() => setIsActionsVisible(false)}>
+        <View style={styles.sheetRoot}>
+          <TouchableWithoutFeedback onPress={() => setIsActionsVisible(false)}>
+            <Animated.View style={[styles.sheetOverlay, actionsSheet.backdropStyle]} />
+          </TouchableWithoutFeedback>
+          <Animated.View style={[styles.sheetContainer, { backgroundColor: colors.surface }, actionsSheet.sheetStyle]}>
             <TouchableOpacity style={styles.sheetItem} onPress={handleCopyLink}>
               <Ionicons name="link-outline" size={22} color={colors.text.primary} style={styles.sheetIcon} />
               <Text style={styles.sheetText}>Linki kopyala</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.sheetItem} onPress={handleDownload}>
+            <TouchableOpacity style={styles.sheetItem} onPress={handleDownload} disabled={isDownloading}>
               <Ionicons name="download-outline" size={22} color={colors.text.primary} style={styles.sheetIcon} />
-              <Text style={styles.sheetText}>Medyayi indir</Text>
+              <Text style={styles.sheetText}>{isDownloading ? 'Indiriliyor...' : 'Medyayi indir'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.sheetItem}
@@ -727,71 +989,73 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
               <Ionicons name="hand-left-outline" size={22} color={colors.error} style={styles.sheetIcon} />
               <Text style={[styles.sheetText, { color: colors.error }]}>Engelle...</Text>
             </TouchableOpacity>
-          </Pressable>
-        </Pressable>
+          </Animated.View>
+        </View>
       </Modal>
 
       <Modal
-        visible={isBlockSheetVisible}
+        visible={blockSheet.isMounted}
         transparent
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => {
           setIsBlockSheetVisible(false);
           setShowTagPicker(false);
         }}
       >
-        <Pressable
-          style={styles.sheetOverlay}
-          onPress={() => {
-            setIsBlockSheetVisible(false);
-            setShowTagPicker(false);
-          }}
-        >
-          <Pressable
-            style={[styles.sheetContainer, { backgroundColor: colors.surface }]}
-            onPress={() => {}}
+        <View style={styles.sheetRoot}>
+          <TouchableWithoutFeedback
+            onPress={() => {
+              setIsBlockSheetVisible(false);
+              setShowTagPicker(false);
+            }}
+          >
+            <Animated.View style={[styles.sheetOverlay, blockSheet.backdropStyle]} />
+          </TouchableWithoutFeedback>
+
+          <Animated.View
+            style={[styles.sheetContainer, { backgroundColor: colors.surface }, blockSheet.sheetStyle]}
           >
             <TouchableOpacity style={styles.sheetItem} onPress={confirmAndBlockUser}>
               <Ionicons name="person-remove-outline" size={22} color={colors.error} style={styles.sheetIcon} />
               <Text style={[styles.sheetText, { color: colors.error }]}>Kullaniciyi engelle</Text>
             </TouchableOpacity>
-            {post.tags?.length ? (
-              <>
-                <TouchableOpacity
-                  style={styles.sheetItem}
-                  onPress={() => {
-                    setShowTagPicker((prev) => !prev);
-                    if (!selectedTag) {
-                      setSelectedTag(post.tags?.[0] ?? null);
-                    }
-                  }}
-                >
-                  <Ionicons name="pricetag-outline" size={22} color={colors.error} style={styles.sheetIcon} />
-                  <Text style={[styles.sheetText, { color: colors.error }]}>Etiketi engelle</Text>
-                </TouchableOpacity>
-                {showTagPicker && (
-                  <>
-                    <Text style={[styles.sheetHint, { color: colors.text.secondary }]}>
-                      Hangi etiketi engellemek istersin?
-                    </Text>
-                    {post.tags.map((tag) => {
-                      const selected = selectedTag === tag;
-                      return (
-                        <TouchableOpacity
-                          key={tag}
-                          style={styles.sheetItem}
-                          onPress={() => setSelectedTag(tag)}
-                        >
-                          <Ionicons
-                            name={selected ? 'radio-button-on' : 'radio-button-off'}
-                            size={20}
-                            color={selected ? colors.primary : colors.text.secondary}
-                            style={styles.sheetIcon}
-                          />
-                          <Text style={styles.sheetText}>#{tag}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+          {post.tags?.length ? (
+            <>
+              <TouchableOpacity
+                style={styles.sheetItem}
+                onPress={() => {
+                  setShowTagPicker((prev) => !prev);
+                  if (!selectedTag) {
+                    setSelectedTag(post.tags?.[0] ?? null);
+                  }
+                }}
+              >
+                <Ionicons name="pricetag-outline" size={22} color={colors.error} style={styles.sheetIcon} />
+                <Text style={[styles.sheetText, { color: colors.error }]}>Etiketi engelle</Text>
+              </TouchableOpacity>
+              {showTagPicker && (
+                <>
+                  <Text style={[styles.sheetHint, { color: colors.text.secondary }]}>
+                    Hangi etiketi engellemek istersin?
+                  </Text>
+                  {post.tags.map((tag) => {
+                    const selected = selectedTag === tag;
+                    return (
+                      <TouchableOpacity
+                        key={tag}
+                        style={styles.sheetItem}
+                        onPress={() => setSelectedTag(tag)}
+                      >
+                        <Ionicons
+                          name={selected ? 'radio-button-on' : 'radio-button-off'}
+                          size={20}
+                          color={selected ? colors.primary : colors.text.secondary}
+                          style={styles.sheetIcon}
+                        />
+                        <Text style={styles.sheetText}>#{tag}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                     <TouchableOpacity style={styles.sheetItem} onPress={confirmAndBlockTag}>
                       <Ionicons name="pricetag-outline" size={22} color={colors.error} style={styles.sheetIcon} />
                       <Text style={[styles.sheetText, { color: colors.error }]}>Secili etiketi engelle</Text>
@@ -806,8 +1070,8 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
                 <Text style={[styles.sheetText, { color: colors.error }]}>Kategoriyi engelle</Text>
               </TouchableOpacity>
             ) : null}
-          </Pressable>
-        </Pressable>
+          </Animated.View>
+        </View>
       </Modal>
 
       <AddToCollectionModal
@@ -817,6 +1081,18 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
         onMembershipChange={(ids) => setSavedCollectionIds(Array.from(new Set(ids)))}
       />
       <CommentsModal visible={isCommentsVisible} onClose={() => setIsCommentsVisible(false)} postId={post.id} />
+      <Modal visible={isDownloading} transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={styles.downloadOverlay}>
+          <View style={[styles.downloadBox, { backgroundColor: colors.surface }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.downloadText}>
+              {downloadProgress != null
+                ? `Indiriliyor... %${Math.max(1, Math.min(100, Math.round(downloadProgress * 100)))}`
+                : 'Indiriliyor...'}
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 });

@@ -268,11 +268,21 @@ export const CategoriesScreen = () => {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Kategoriler</Text>
-        {canCreate && (
-          <TouchableOpacity style={styles.createButton} onPress={handleCreate}>
-            <Ionicons name="add" size={24} color="#fff" />
-          </TouchableOpacity>
-        )}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {canUpdate && (
+            <TouchableOpacity 
+              style={[styles.createButton, { backgroundColor: colors.surfaceHighlight }]} 
+              onPress={() => navigate('CategoryReorder' as any)}
+            >
+              <Ionicons name="swap-vertical" size={24} color={colors.text.primary} />
+            </TouchableOpacity>
+          )}
+          {canCreate && (
+            <TouchableOpacity style={styles.createButton} onPress={handleCreate}>
+              <Ionicons name="add" size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {isLoading ? (

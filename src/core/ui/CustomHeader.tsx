@@ -29,8 +29,6 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
   const styles = useMemo(() => StyleSheet.create({
     container: {
       backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
       zIndex: 100,
     },
     content: {

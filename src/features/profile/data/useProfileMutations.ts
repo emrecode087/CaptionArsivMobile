@@ -44,6 +44,15 @@ export const useDeleteAccountMutation = () => {
   });
 };
 
+export const useSendFeedbackMutation = () => {
+  return useMutation<string | null, ApiError, { message: string; contact: string }>({
+    mutationFn: async (data) => {
+      const res = await profileApi.sendFeedback(data);
+      return res ?? null;
+    },
+  });
+};
+
 export const useUploadProfilePhotoMutation = () => {
   const setUser = useAuthStore((state) => state.setUser);
 

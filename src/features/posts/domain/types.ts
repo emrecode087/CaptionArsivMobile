@@ -29,6 +29,14 @@ export interface PostsListParams {
   onlyApproved?: boolean;
   includePrivate?: boolean;
   includeDeleted?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface SearchPostsParams {
+  q: string;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface CreatePostRequest {

@@ -7,6 +7,7 @@ import type {
   UpdateCategoryRequest,
   CategoryFollowStatus,
 } from '../domain/types';
+import { sortCategories } from '../domain/sortCategories';
 
 const endpoint = '/Categories';
 
@@ -21,7 +22,7 @@ export const fetchCategories = async (params?: CategoryListParams) => {
     });
   }
 
-  return payload.data;
+  return sortCategories(payload.data);
 };
 
 export const getCategoryById = async (id: string) => {
@@ -149,4 +150,18 @@ export const unfollowCategory = async (id: string) => {
   }
 
   return payload.data;
+};
+
+export const reorderCategories = async (categoryIds: string[]) => {
+  const response = await apiClient.post<ApiResult<Category[]>>(`${endpoint}/reorder`, { categoryIds });
+  const payload = response.data;
+
+  if (!payload.isSuccess || !payload.data) {
+    throw new ApiError(payload.message ?? 'Kategori sıralaması güncellenemedi', {
+      status: response.status,
+      errors: payload.errors ?? null,
+    });
+  }
+
+  return sortCategories(payload.data);
 };

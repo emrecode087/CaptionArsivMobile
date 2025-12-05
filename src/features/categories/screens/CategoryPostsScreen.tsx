@@ -90,106 +90,130 @@ export const CategoryPostsScreen = memo(() => {
           backgroundColor: colors.background,
         },
     headerContainer: {
-      paddingVertical: spacing.lg,
-      paddingHorizontal: spacing.lg,
       paddingTop: spacing.xl + insets.top * 0.25,
       backgroundColor: colors.surface,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      gap: spacing.md,
+      marginBottom: spacing.md,
     },
     headerContent: {
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: spacing.sm,
+      paddingHorizontal: '5%',
+      paddingBottom: spacing.lg,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: spacing.md,
+      marginBottom: spacing.xs,
     },
     icon: {
-      width: 64,
-      height: 64,
-      borderRadius: borderRadius.lg,
-      backgroundColor: colors.surfaceHighlight,
-    },
-    headerTitle: {
-      ...typography.h3,
-      color: colors.text.primary,
-      fontWeight: '700',
-      textAlign: 'center',
-    },
-    headerDescription: {
-      ...typography.body,
-      color: colors.text.secondary,
-      textAlign: 'center',
-      lineHeight: typography.body.lineHeight * 1.2,
-    },
-    chipsRow: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      paddingVertical: spacing.xs,
-    },
-    chip: {
-      backgroundColor: colors.surfaceHighlight,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs + 2,
-      borderRadius: borderRadius.full,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    chipText: {
-      ...typography.body2,
-      color: colors.text.primary,
-    },
-    followButton: {
-      backgroundColor: colors.text.inverse,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-      borderRadius: borderRadius.full,
-      minWidth: '85%',
-      alignItems: 'center',
-      alignSelf: 'center',
-    },
-    followingButton: {
-      backgroundColor: colors.surfaceHighlight,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    followButtonText: {
-      ...typography.button,
-      color: colors.text.primary,
-      fontSize: 15,
-      fontWeight: '700',
-    },
-    followingButtonText: {
-      color: colors.text.primary,
-    },
-    tabRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingTop: spacing.md,
-    },
-    tabButton: {
-      paddingVertical: spacing.xs,
-      paddingHorizontal: spacing.sm,
-    },
-    tabText: {
-      ...typography.body2,
-      color: colors.text.secondary,
-      fontWeight: '500',
-    },
-    tabTextActive: {
-      color: colors.text.primary,
-      fontWeight: '700',
-    },
-    tabUnderline: {
-      height: 3,
-      width: '100%',
-      borderRadius: 4,
-      marginTop: spacing.xs,
-    },
+          width: 74,
+          height: 74,
+          borderRadius: borderRadius.lg,
+          backgroundColor: colors.surfaceHighlight,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        iconPlaceholder: {
+          width: 74,
+          height: 74,
+          borderRadius: borderRadius.lg,
+          backgroundColor: colors.surfaceHighlight,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        headerTitle: {
+          ...typography.h2,
+          fontSize: 22,
+          color: colors.text.primary,
+          fontWeight: '700',
+          textAlign: 'left',
+          marginTop: spacing.xs,
+        },
+        headerDescription: {
+          ...typography.body,
+          fontSize: 15,
+          color: colors.text.secondary,
+          textAlign: 'left',
+          lineHeight: 21,
+          maxWidth: '100%',
+        },
+        chipsScrollContainer: {
+          width: '100%',
+          marginTop: spacing.xs,
+        },
+        chipsRow: {
+          flexDirection: 'row',
+          gap: 8,
+          paddingHorizontal: 0,
+        },
+        chip: {
+          backgroundColor: colors.surfaceHighlight,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderRadius: 50,
+        },
+        chipText: {
+          ...typography.body2,
+          fontSize: 14,
+          color: colors.text.primary,
+        },
+        followButton: {
+          backgroundColor: colors.primary,
+          paddingVertical: 14,
+          borderRadius: 4,
+          width: '100%',
+          alignItems: 'center',
+          alignSelf: 'center',
+          marginTop: spacing.sm,
+        },
+        followingButton: {
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        followButtonText: {
+          ...typography.button,
+          fontSize: 16,
+          color: colors.text.inverse,
+          fontWeight: '700',
+        },
+        followingButtonText: {
+          color: colors.text.primary,
+        },
+        tabRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          width: '100%',
+        },
+        tabButton: {
+          paddingTop: spacing.md,
+          paddingBottom: spacing.sm,
+          width: '100%',
+          alignItems: 'center',
+        },
+        tabText: {
+          ...typography.body,
+          fontSize: 15,
+          color: colors.text.tertiary,
+          fontWeight: '500',
+        },
+        tabTextActive: {
+          color: colors.text.primary,
+          fontWeight: '700',
+        },
+        tabUnderline: {
+          height: 2,
+          width: '100%',
+          backgroundColor: colors.primary,
+        },
     listContent: {
-      padding: spacing.md,
+      paddingBottom: spacing.md,
     },
         columnWrapper: {
           gap: spacing.md,
+          paddingHorizontal: spacing.md,
         },
         loadingOverlay: {
           ...StyleSheet.absoluteFillObject,
@@ -290,12 +314,18 @@ export const CategoryPostsScreen = memo(() => {
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       <View style={styles.headerContent}>
-        {categoryIcon && <Image source={{ uri: categoryIcon }} style={styles.icon} />}
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {category?.name || categoryName}
-        </Text>
+        <View style={styles.titleRow}>
+          {categoryIcon && <Image source={{ uri: categoryIcon }} style={styles.icon} />}
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {category?.name || categoryName}
+          </Text>
+        </View>
         {category?.description ? (
-          <Text style={styles.headerDescription} numberOfLines={2}>
+          <Text
+            style={styles.headerDescription}
+            numberOfLines={1}
+            onPress={() => setActiveTab('about')}
+          >
             {category.description}
           </Text>
         ) : (
@@ -336,23 +366,27 @@ export const CategoryPostsScreen = memo(() => {
           };
           const isActive = activeTab === tabKey;
           return (
-            <View key={tabKey} style={{ alignItems: 'center', flex: 1 }}>
-              <TouchableOpacity style={styles.tabButton} onPress={() => setActiveTab(tabKey)}>
+            <TouchableOpacity
+              key={tabKey}
+              style={{ flex: 1, alignItems: 'center' }}
+              onPress={() => setActiveTab(tabKey)}
+            >
+              <View style={styles.tabButton}>
                 <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{labels[tabKey]}</Text>
-              </TouchableOpacity>
+              </View>
               <View
                 style={[
                   styles.tabUnderline,
                   { backgroundColor: isActive ? colors.primary : 'transparent' },
                 ]}
               />
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
 
       {activeTab === 'about' && (
-        <View style={{ marginTop: spacing.xs }}>
+        <View style={{ marginTop: spacing.xs, paddingHorizontal: spacing.md }}>
           <Text style={[styles.headerDescription, { color: colors.text.secondary }]}>
             {category?.description || 'Bu kategori için açıklama yok.'}
           </Text>

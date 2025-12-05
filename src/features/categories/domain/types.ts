@@ -3,6 +3,7 @@ export interface Category {
   name: string;
   description?: string | null;
   iconUrl?: string | null;
+  sortOrder?: number;
   isDeleted?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -26,9 +27,15 @@ export interface CategoryListParams {
 export interface CreateCategoryRequest {
   name: string;
   description?: string;
+  sortOrder?: number;
 }
 
 export interface UpdateCategoryRequest {
   name: string;
   description?: string;
+  sortOrder?: number;
+}
+
+export interface ReorderCategoriesRequest {
+  categoryIds: string[];
 }

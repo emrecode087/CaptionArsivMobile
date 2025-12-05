@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, TextInput, ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Animated, TouchableWithoutFeedback, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useMyCollectionsQuery,
@@ -21,6 +21,9 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
   const [isCreating, setIsCreating] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
   const { colors } = useTheme();
+  const [isMounted, setIsMounted] = useState(visible);
+  const backdropOpacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(visible ? 0 : 220)).current;
   
   const { data: collectionsData, isLoading: isLoadingCollections } = useMyCollectionsQuery({ includePosts: true });
   const createCollectionMutation = useCreateCollectionMutation();
@@ -33,10 +36,13 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
   }, [collectionsData?.data, postId]);
 
   const styles = useMemo(() => StyleSheet.create({
-    overlay: {
+    root: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)', // Overlay color
       justifyContent: 'flex-end',
+    },
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.5)', // Overlay color
     },
     content: {
       backgroundColor: colors.surface,
@@ -142,6 +148,39 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
     },
   }), [colors]);
 
+  useEffect(() => {
+    if (visible) {
+      setIsMounted(true);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (isMounted) {
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 220,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => setIsMounted(false));
+    }
+  }, [visible, isMounted, backdropOpacity, sheetTranslateY]);
+
   const handleCreateCollection = () => {
     if (!newCollectionName.trim()) return;
     
@@ -191,19 +230,22 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
 
   return (
     <Modal
-      visible={visible}
+      visible={isMounted}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Add to Collection</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color={colors.text.primary} />
-            </TouchableOpacity>
-          </View>
+      <View style={styles.root}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <Animated.View style={[styles.overlay, { opacity: backdropOpacity }]} />
+        </TouchableWithoutFeedback>
+        <Animated.View style={[styles.content, { transform: [{ translateY: sheetTranslateY }] }]}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Add to Collection</Text>
+              <TouchableOpacity onPress={onClose}>
+                <Ionicons name="close" size={24} color={colors.text.primary} />
+              </TouchableOpacity>
+            </View>
 
           {isLoadingCollections ? (
             <ActivityIndicator size="large" color={colors.primary} />
@@ -268,18 +310,18 @@ export const AddToCollectionModal: React.FC<AddToCollectionModalProps> = ({ visi
                     </TouchableOpacity>
                   </View>
                 </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.newButton}
-                  onPress={() => setIsCreating(true)}
-                >
-                  <Ionicons name="add" size={24} color={colors.surface} />
-                  <Text style={styles.newButtonText}>New Collection</Text>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-        </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.newButton}
+                    onPress={() => setIsCreating(true)}
+                  >
+                    <Ionicons name="add" size={24} color={colors.surface} />
+                    <Text style={styles.newButtonText}>New Collection</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+        </Animated.View>
       </View>
     </Modal>
   );

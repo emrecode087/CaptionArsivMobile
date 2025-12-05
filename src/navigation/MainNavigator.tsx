@@ -3,11 +3,13 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { View, Image } from 'react-native';
 
 import { CategoriesScreen } from '@/features/categories/screens/CategoriesScreen';
+import { CategoryReorderScreen } from '@/features/categories/screens/CategoryReorderScreen';
 import { CategoryPostsScreen } from '@/features/categories/screens/CategoryPostsScreen';
 import { MainScreen } from '@/features/home/screens/MainScreen';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import { CollectionDetailScreen } from '@/features/collections/screens/CollectionDetailScreen';
 import { useTheme } from '@/core/theme/useTheme';
+import { SearchPostsScreen } from '@/features/posts/screens/SearchPostsScreen';
 import { Sidebar } from '@/core/ui/Sidebar';
 import { LikedPostsScreen } from '@/features/posts/screens/LikedPostsScreen';
 import { BlockUsersScreen } from '@/features/blocks/screens/BlockUsersScreen';
@@ -22,6 +24,7 @@ import { NotificationsScreen } from '@/features/notifications/screens/Notificati
 import SettingsScreen from '@/features/profile/screens/SettingsScreen';
 import { EditProfileScreen } from '@/features/profile/screens/EditProfileScreen';
 import { ChangePasswordScreen } from '@/features/profile/screens/ChangePasswordScreen';
+import { SendFeedbackScreen } from '@/features/profile/screens/SendFeedbackScreen';
 
 export const MainNavigator = memo(() => {
   const { colors, isDark } = useTheme();
@@ -31,6 +34,7 @@ export const MainNavigator = memo(() => {
     <View style={{ flex: 1 }}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainScreen} />
+        <Stack.Screen name="SearchPosts" component={SearchPostsScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="CreatePost" component={CreatePostScreen} />
         <Stack.Screen 
@@ -86,6 +90,13 @@ export const MainNavigator = memo(() => {
           }}
         />
         <Stack.Screen 
+          name="CategoryReorder" 
+          component={CategoryReorderScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
           name="CollectionDetail" 
           component={CollectionDetailScreen}
           options={{
@@ -117,18 +128,32 @@ export const MainNavigator = memo(() => {
             headerStyle: { backgroundColor: colors.surface },
           }}
         />
-        <Stack.Screen
-          name="ChangePassword"
+                <Stack.Screen 
+          name="ChangePassword" 
           component={ChangePasswordScreen}
           options={{
             headerShown: true,
-            title: 'Sifre degistir',
+            title: 'Şifre Değiştir',
             headerTintColor: colors.text.primary,
-            headerStyle: { backgroundColor: colors.surface },
+            headerStyle: {
+              backgroundColor: colors.surface,
+            },
           }}
         />
-        <Stack.Screen
-          name="LikedPosts"
+        <Stack.Screen 
+          name="SendFeedback" 
+          component={SendFeedbackScreen}
+          options={{
+            headerShown: true,
+            title: 'Geri Bildirim',
+            headerTintColor: colors.text.primary,
+            headerStyle: {
+              backgroundColor: colors.surface,
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="LikedPosts" 
           component={LikedPostsScreen}
           options={{
             headerShown: false,

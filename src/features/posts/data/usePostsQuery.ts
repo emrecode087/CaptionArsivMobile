@@ -1,14 +1,16 @@
-import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type QueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery, type UseInfiniteQueryOptions, type UseQueryOptions, type QueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/core/types/api';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 
-import type { Post, PostsListParams, CreatePostRequest, Comment } from '../domain/types';
-import { fetchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment, fetchFollowedCategoryPosts, fetchLikedPosts } from './postsApi';
+import type { Post, PostsListParams, SearchPostsParams, CreatePostRequest, Comment } from '../domain/types';
+import { fetchPosts, fetchSearchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment, fetchFollowedCategoryPosts, fetchLikedPosts } from './postsApi';
 
 export const postsQueryKeys = {
   all: ['posts'] as const,
   list: (params?: PostsListParams) => [...postsQueryKeys.all, params] as const,
+  infiniteList: (params?: PostsListParams) => [...postsQueryKeys.all, 'infinite', params] as const,
+  search: (params: SearchPostsParams) => [...postsQueryKeys.all, 'search', params] as const,
   liked: (userId?: string, includePrivate?: boolean, includeDeleted?: boolean) =>
     [...postsQueryKeys.all, 'liked', userId ?? 'me', includePrivate ?? true, includeDeleted ?? false] as const,
   followed: () => [...postsQueryKeys.all, 'followed'] as const,
@@ -170,6 +172,55 @@ export const useFollowedCategoryPostsQuery = (
     queryFn: fetchFollowedCategoryPosts,
     ...options,
   });
+
+export const useInfinitePostsQuery = (
+  params?: PostsListParams,
+  options?: Omit<
+    UseInfiniteQueryOptions<Post[], ApiError, Post[], Post[], ReturnType<typeof postsQueryKeys.infiniteList>>,
+    'queryKey' | 'queryFn' | 'getNextPageParam' | 'initialPageParam'
+  >,
+) => {
+  const pageSize = params?.pageSize ?? 20;
+  const initialPage = params?.page ?? 1;
+
+  return useInfiniteQuery({
+    queryKey: postsQueryKeys.infiniteList({ ...params, page: undefined, pageSize }),
+    queryFn: ({ pageParam = initialPage }) =>
+      fetchPosts({
+        ...params,
+        page: pageParam,
+        pageSize,
+      }),
+    initialPageParam: initialPage,
+    getNextPageParam: (lastPage, allPages) => (lastPage.length >= pageSize ? allPages.length + initialPage : undefined),
+    ...options,
+  });
+};
+
+export const useInfiniteSearchPosts = (
+  params: SearchPostsParams,
+  options?: Omit<
+    UseInfiniteQueryOptions<Post[], ApiError, Post[], Post[], ReturnType<typeof postsQueryKeys.search>>,
+    'queryKey' | 'queryFn' | 'getNextPageParam' | 'initialPageParam'
+  >,
+) => {
+  const pageSize = params.pageSize ?? 20;
+  const initialPage = params.page ?? 1;
+
+  return useInfiniteQuery({
+    queryKey: postsQueryKeys.search({ ...params, page: undefined }),
+    queryFn: ({ pageParam = initialPage }) =>
+      fetchSearchPosts({
+        ...params,
+        page: pageParam,
+        pageSize,
+      }),
+    initialPageParam: initialPage,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length >= pageSize ? allPages.length + initialPage : undefined,
+    ...options,
+  });
+};
 
 export const useLikedPostsQuery = (
   params: { userId?: string; includePrivate?: boolean; includeDeleted?: boolean },

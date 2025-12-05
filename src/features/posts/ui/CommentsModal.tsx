@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,13 +14,19 @@ import {
   TouchableWithoutFeedback,
   Animated,
   PanResponder,
+  Dimensions,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing, typography, borderRadius } from '@/core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
-import { useCommentsQuery, useCreateCommentMutation, useDeleteCommentMutation } from '../data/usePostsQuery';
+import {
+  useCommentsQuery,
+  useCreateCommentMutation,
+  useDeleteCommentMutation,
+} from '../data/usePostsQuery';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 import { Comment } from '../domain/types';
 
@@ -42,36 +48,60 @@ const timeAgo = (dateStr: string) => {
   return `${days} g`;
 };
 
+const POPULAR_EMOJIS = ['🔥', '❤️', '👏', '😂', '😮', '😢', '😡', '👍', '🎉', '👀'];
+
 export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) => {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const [newComment, setNewComment] = useState('');
   const { colors } = useTheme();
-  const translateY = useRef(new Animated.Value(0)).current;
+  const screenHeight = useMemo(() => Dimensions.get('window').height, []);
+
+  // Animasyon Değerleri
+  const translateY = useRef(new Animated.Value(screenHeight)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  // Scroll Pozisyon Takibi
+  const scrollOffset = useRef(0);
 
   const { data: comments, isLoading } = useCommentsQuery(postId);
   const createCommentMutation = useCreateCommentMutation();
   const deleteCommentMutation = useDeleteCommentMutation();
 
+  const handleEmojiSelect = (emoji: string) => {
+    setNewComment((prev) => prev + emoji);
+  };
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        overlay: {
+        container: {
           flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.45)',
           justifyContent: 'flex-end',
+        },
+        overlay: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: 'rgba(0,0,0,0.5)',
         },
         sheet: {
           backgroundColor: colors.surface,
           borderTopLeftRadius: 18,
           borderTopRightRadius: 18,
-          maxHeight: '85%',
-          paddingBottom: insets.bottom || spacing.md,
+          height: '85%',
+          paddingBottom: insets.bottom,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -6 },
           shadowOpacity: 0.15,
           shadowRadius: 14,
           elevation: 16,
+          overflow: 'hidden',
+        },
+        headerArea: {
+          backgroundColor: colors.surface,
+          paddingTop: spacing.sm,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+          borderBottomColor: colors.border,
+          zIndex: 10,
         },
         handle: {
           alignSelf: 'center',
@@ -79,10 +109,9 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
           height: 5,
           borderRadius: 3,
           backgroundColor: colors.border,
-          marginTop: spacing.sm,
           marginBottom: spacing.sm,
         },
-        header: {
+        headerContent: {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -101,7 +130,9 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          paddingVertical: spacing.lg,
+        },
+        listWrapper: {
+          flex: 1,
         },
         listContent: {
           paddingHorizontal: spacing.md,
@@ -120,6 +151,7 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
           flexDirection: 'row',
           gap: spacing.sm,
           marginBottom: spacing.md,
+          marginTop: spacing.md,
         },
         avatar: {
           width: 36,
@@ -172,9 +204,24 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
           padding: spacing.xs,
           marginLeft: spacing.xs,
         },
-        inputWrapper: {
+        emojiListContainer: {
+          backgroundColor: colors.surface,
+          paddingVertical: spacing.xs,
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
+        },
+        emojiContent: {
+          paddingHorizontal: spacing.sm,
+        },
+        emojiItem: {
+          padding: spacing.sm,
+          marginRight: spacing.xs,
+        },
+        emojiText: {
+          fontSize: 22,
+        },
+        inputWrapper: {
+          // borderTopWidth removed, moved to emojiListContainer
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.sm,
           backgroundColor: colors.surface,
@@ -232,9 +279,117 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
     ]);
   };
 
+  const closeSheet = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: screenHeight,
+        duration: 250,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.ease),
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  }, [onClose, screenHeight, translateY, opacity]);
+
+  // --- PAN RESPONDER MANTIĞI ---
+
+  // Ortak hareket işleyici
+  const handlePanMove = (_: any, gestureState: any) => {
+    // Sadece aşağı doğru harekete izin ver
+    if (gestureState.dy > 0) {
+      translateY.setValue(gestureState.dy);
+    }
+  };
+
+  // Ortak bırakma işleyici
+  const handlePanRelease = (_: any, gestureState: any) => {
+    if (gestureState.dy > 150 || gestureState.vy > 0.8) {
+      closeSheet();
+    } else {
+      Animated.spring(translateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        bounciness: 4,
+        speed: 12,
+      }).start();
+    }
+  };
+
+  // 1. Header PanResponder: Header'dan tutunca her zaman sürüklemeye izin ver
+  const headerPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true, // Header'a dokunulduğunda yakala
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const { dy, dx } = gestureState;
+        // Yatay kaydırmada devreye girme
+        if (Math.abs(dx) > Math.abs(dy)) return false;
+        // Aşağı veya yukarı hareket
+        return Math.abs(dy) > 5;
+      },
+      onPanResponderMove: handlePanMove,
+      onPanResponderRelease: handlePanRelease,
+    })
+  ).current;
+
+  // 2. List PanResponder: Liste üzerinden tutunca sadece en tepedeyse izin ver
+  const listPanResponder = useRef(
+    PanResponder.create({
+      // Capture phase kullanarak FlatList'ten önce yakalıyoruz
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+        const { dy, dx } = gestureState;
+        
+        // Yatay hareket baskınsa karışma
+        if (Math.abs(dx) > Math.abs(dy)) return false;
+
+        // Yukarı itiyorsa (liste aşağı scroll olacak) KESİNLİKLE karışma
+        if (dy < 0) return false;
+
+        // Aşağı çekiyorsa ve liste tepedeyse YAKALA
+        // dy > 5 toleransı
+        if (dy > 5 && scrollOffset.current <= 0) {
+          return true;
+        }
+
+        return false;
+      },
+      onPanResponderMove: handlePanMove,
+      onPanResponderRelease: handlePanRelease,
+    })
+  ).current;
+
+  useEffect(() => {
+    if (visible) {
+      translateY.setValue(screenHeight);
+      opacity.setValue(0);
+      scrollOffset.current = 0;
+      
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          useNativeDriver: true,
+          bounciness: 4,
+          speed: 12,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible, screenHeight, translateY, opacity]);
+
   const renderCommentItem = ({ item }: { item: Comment }) => {
     const isOwnComment = user?.id === item.userId;
-    const canDelete = isOwnComment || user?.roles.includes('SuperAdmin') || user?.roles.includes('Moderator');
+    const canDelete =
+      isOwnComment || user?.roles.includes('SuperAdmin') || user?.roles.includes('Moderator');
 
     return (
       <View style={styles.commentItem}>
@@ -248,11 +403,7 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
           </View>
           <Text style={styles.commentText}>{item.content}</Text>
           <View style={styles.metaRow}>
-            <Text style={styles.metaText}>Yanıtla</Text>
-            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="heart-outline" size={14} color={colors.text.tertiary} />
-              <Text style={styles.metaText}>0</Text>
-            </TouchableOpacity>
+             <Text style={styles.metaText}>Yanıtla</Text>
           </View>
         </View>
         {canDelete && (
@@ -264,74 +415,92 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
     );
   };
 
-  const panResponder = useMemo(() => {
-    return PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) => gesture.dy > 10,
-      onPanResponderMove: (_, gesture) => {
-        if (gesture.dy > 0) {
-          translateY.setValue(gesture.dy);
-        }
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dy > 80) {
-          onClose();
-        } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 6,
-          }).start();
-        }
-      },
-    });
-  }, [onClose, translateY]);
-
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={{ flex: 1 }}>
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.overlay} />
+    <Modal
+      visible={visible}
+      animationType="none"
+      transparent
+      onRequestClose={closeSheet}
+      statusBarTranslucent
+    >
+      <View style={styles.container}>
+        <TouchableWithoutFeedback onPress={closeSheet}>
+          <Animated.View style={[styles.overlay, { opacity }]} />
         </TouchableWithoutFeedback>
-        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]} {...panResponder.panHandlers}>
-          <View style={styles.handle} />
-          <View style={styles.header}>
-            <Text style={styles.title}>Yorumlar</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={colors.text.primary} />
-            </TouchableOpacity>
+
+        <Animated.View 
+          style={[styles.sheet, { transform: [{ translateY }] }]}
+        >
+          {/* Header Bölümü - Kendi PanResponder'ı var */}
+          <View style={styles.headerArea} {...headerPanResponder.panHandlers}>
+            <View style={styles.handle} />
+            <View style={styles.headerContent}>
+              <Text style={styles.title}>Yorumlar</Text>
+              <TouchableOpacity onPress={closeSheet} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={colors.text.primary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            <FlatList
-              data={comments}
-              keyExtractor={(item) => item.id}
-              renderItem={renderCommentItem}
-              contentContainerStyle={[
-                styles.listContent,
-                !comments?.length ? { flex: 1, justifyContent: 'center' } : null,
-              ]}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>Henüz yorum yok. İlk yorumu sen yap!</Text>
-                </View>
-              }
-              keyboardShouldPersistTaps="handled"
-            />
-          )}
+          {/* Liste Bölümü - Kendi PanResponder'ı var */}
+          <View style={styles.listWrapper} {...listPanResponder.panHandlers}>
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : (
+              <FlatList
+                data={comments}
+                keyExtractor={(item) => item.id}
+                renderItem={renderCommentItem}
+                contentContainerStyle={[
+                  styles.listContent,
+                  !comments?.length ? { flex: 1, justifyContent: 'center' } : null,
+                ]}
+                onScroll={({ nativeEvent }) => {
+                  scrollOffset.current = nativeEvent.contentOffset.y;
+                }}
+                scrollEventThrottle={16}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>Henüz yorum yok. İlk yorumu sen yap!</Text>
+                  </View>
+                }
+                keyboardShouldPersistTaps="handled"
+                bounces={false} // Bounces kapalı, böylece negatif scroll ile karışmaz
+                overScrollMode="never"
+              />
+            )}
+          </View>
 
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 64 : 0}
           >
+            <View style={styles.emojiListContainer}>
+              <FlatList
+                data={POPULAR_EMOJIS}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.emojiContent}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={styles.emojiItem} 
+                    onPress={() => handleEmojiSelect(item)}
+                  >
+                    <Text style={styles.emojiText}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+                keyExtractor={(item) => item}
+              />
+            </View>
+
             <View style={styles.inputWrapper}>
               <View style={styles.inputContainer}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{(user?.userName?.[0] || 'K').toUpperCase()}</Text>
-                </View>
+                 <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{(user?.userName?.[0] || 'K').toUpperCase()}</Text>
+                 </View>
                 <TextInput
                   style={styles.input}
                   placeholder="Yorum yaz..."
@@ -340,15 +509,7 @@ export const CommentsModal = ({ visible, onClose, postId }: CommentsModalProps) 
                   onChangeText={setNewComment}
                   multiline
                   maxLength={500}
-                  scrollEnabled
-                  textAlignVertical="center"
                 />
-                <TouchableOpacity style={{ padding: spacing.xs }}>
-                  <Ionicons name="attach" size={18} color={colors.text.secondary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={{ padding: spacing.xs }}>
-                  <Ionicons name="happy-outline" size={18} color={colors.text.secondary} />
-                </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.sendButton, !newComment.trim() && styles.disabledSendButton]}
                   onPress={handleSendComment}

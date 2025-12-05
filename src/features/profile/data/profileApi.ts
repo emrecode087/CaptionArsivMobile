@@ -48,6 +48,19 @@ export const profileApi = {
     return parseUserResponse(response, 'Sifre guncellenemedi');
   },
 
+  sendFeedback: async (data: { message: string; contact: string }) => {
+    const response = await apiClient.post<ApiResult<string>>('/Feedback', data);
+    
+    if (!response.data.isSuccess) {
+      throw new ApiError(response.data.message ?? 'Geri bildirim gonderilemedi', {
+        status: response.status,
+        errors: response.data.errors ?? null,
+      });
+    }
+    
+    return response.data.data;
+  },
+  
   deleteMyAccount: async () => {
     const response = await apiClient.delete<ApiResult<string>>('/Users/me');
     const payload = response.data;

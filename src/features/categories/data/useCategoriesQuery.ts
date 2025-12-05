@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@ta
 import { ApiError } from '@/core/types/api';
 import { postsQueryKeys } from '@/features/posts/data/usePostsQuery';
 
-import { fetchCategories, createCategory, updateCategory, deleteCategory, followCategory, unfollowCategory, getCategoryById, uploadCategoryIcon } from './categoriesApi';
+import { fetchCategories, createCategory, updateCategory, deleteCategory, followCategory, unfollowCategory, getCategoryById, uploadCategoryIcon, reorderCategories } from './categoriesApi';
 import type { Category, CategoryListParams, CreateCategoryRequest, UpdateCategoryRequest, CategoryFollowStatus } from '../domain/types';
 
 export const categoriesQueryKeys = {
@@ -139,6 +139,18 @@ export const useUploadCategoryIconMutation = () => {
       queryClient.setQueryData<Category>(categoriesQueryKeys.detail(updatedCategory.id), (old) =>
         old ? { ...old, ...updatedCategory } : updatedCategory,
       );
+      queryClient.invalidateQueries({ queryKey: categoriesQueryKeys.all });
+    },
+  });
+};
+
+export const useReorderCategoriesMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Category[], ApiError, string[]>({
+    mutationFn: reorderCategories,
+    onSuccess: (data) => {
+      queryClient.setQueryData<Category[]>(categoriesQueryKeys.list(), data);
       queryClient.invalidateQueries({ queryKey: categoriesQueryKeys.all });
     },
   });

@@ -11,9 +11,11 @@ import { HomeScreen } from '@/features/home/screens/HomeScreen';
 import { CollectionsScreen } from '@/features/collections/screens/CollectionsScreen';
 import { useTheme } from '@/core/theme/useTheme';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
+import { spacing } from '@/core/theme/tokens';
 
 const HEADER_HEIGHT = 56; // Approximate CustomHeader height
 const SUBMENU_HEIGHT = 56; // Approximate SubMenu height (16+16+24)
+const SUBMENU_OVERLAP = -spacing.md; // Submenu pulled up by -16 in SubMenu styles
 
 export const MainScreen = () => {
   const insets = useSafeAreaInsets();
@@ -24,7 +26,7 @@ export const MainScreen = () => {
   const [activeTab, setActiveTab] = useState<MainTabType>('home');
 
   // Calculate total header height including safe area
-  const totalHeaderHeight = HEADER_HEIGHT + SUBMENU_HEIGHT + insets.top;
+  const totalHeaderHeight = HEADER_HEIGHT + SUBMENU_HEIGHT + insets.top + SUBMENU_OVERLAP;
 
   // Animation Logic
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -144,6 +146,7 @@ export const MainScreen = () => {
         ]}
       >
         <CustomHeader 
+          onSearchPress={() => navigation.navigate('SearchPosts')}
           onNotificationPress={() => navigation.navigate('Notifications')}
         />
         <SubMenu activeTab={activeTab} onTabPress={setActiveTab} />

@@ -1,9 +1,10 @@
 import { apiClient } from '@/core/network/apiClient';
 import { ApiError, ApiResult } from '@/core/types/api';
 
-import type { Post, PostsListParams, CreatePostRequest, Comment } from '../domain/types';
+import type { Post, PostsListParams, SearchPostsParams, CreatePostRequest, Comment } from '../domain/types';
 
 const endpoint = '/posts';
+const searchEndpoint = '/Posts/search';
 
 export const fetchPosts = async (params?: PostsListParams) => {
   const response = await apiClient.get<ApiResult<Post[]>>(endpoint, { params });
@@ -138,6 +139,26 @@ export const fetchFollowedCategoryPosts = async () => {
 
   if (!payload.isSuccess || !payload.data) {
     throw new ApiError(payload.message ?? 'Takip edilen kategori gönderileri alınamadı', {
+      status: response.status,
+      errors: payload.errors ?? null,
+    });
+  }
+
+  return payload.data;
+};
+
+export const fetchSearchPosts = async (params: SearchPostsParams) => {
+  const response = await apiClient.get<ApiResult<Post[]>>(searchEndpoint, {
+    params: {
+      q: params.q,
+      page: params.page,
+      pageSize: params.pageSize,
+    },
+  });
+  const payload = response.data;
+
+  if (!payload.isSuccess || !payload.data) {
+    throw new ApiError(payload.message ?? 'Arama sonucu getirilemedi', {
       status: response.status,
       errors: payload.errors ?? null,
     });
