@@ -279,7 +279,7 @@ export const CategoriesScreen = () => {
           )}
           {canCreate && (
             <TouchableOpacity style={styles.createButton} onPress={handleCreate}>
-              <Ionicons name="add" size={24} color="#fff" />
+              <Ionicons name="add" size={24} color={colors.text.inverse} />
             </TouchableOpacity>
           )}
         </View>

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Image, StyleSheet, TouchableOpacity, Platform, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { spacing, typography } from '@/core/theme/tokens';
 import { useUIStore } from '@/core/stores/useUIStore';
 import { useTheme } from '@/core/theme/useTheme';
@@ -13,10 +14,13 @@ import { resolveMediaUrl } from '@/core/utils/mediaUrl';
 interface CustomHeaderProps {
   onSearchPress?: () => void;
   onNotificationPress?: () => void;
+  title?: string;
+  showBack?: boolean;
 }
 
-export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeaderProps) => {
+export const CustomHeader = ({ onSearchPress, onNotificationPress, title, showBack }: CustomHeaderProps) => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { toggleSidebar } = useUIStore();
   const { colors, isDark } = useTheme();
   const { data: unreadCount } = useUnreadNotificationsQuery();
@@ -105,45 +109,55 @@ export const CustomHeader = ({ onSearchPress, onNotificationPress }: CustomHeade
         <View style={styles.content}>
           {/* Left Section: Menu + Logo + Title */}
           <View style={styles.leftSection}>
-            <TouchableOpacity onPress={toggleSidebar} style={styles.iconButton}>
-              <Ionicons name="menu" size={28} color={colors.text.primary} />
-            </TouchableOpacity>
+            {showBack ? (
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
+                <Ionicons name="arrow-back" size={28} color={colors.text.primary} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={toggleSidebar} style={styles.iconButton}>
+                <Ionicons name="menu" size={28} color={colors.text.primary} />
+              </TouchableOpacity>
+            )}
             
-            <Image 
-              source={logoSource} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={styles.title}>Caption Arşiv</Text>
+            {!title && (
+              <Image 
+                source={logoSource} 
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            )}
+            <Text style={styles.title}>{title || 'Caption Arşiv'}</Text>
           </View>
 
           {/* Right Section: Actions */}
-          <View style={styles.rightSection}>
-            <TouchableOpacity onPress={onSearchPress} style={styles.iconButton}>
-              <Ionicons name="search-outline" size={24} color={colors.text.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
-              <Ionicons name="notifications-outline" size={24} color={colors.text.primary} />
-              {hasUnread && (
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeText}>
-                    {unreadCount && unreadCount > 9 ? '9+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setIsProfileMenuVisible(true)} style={styles.iconButton}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarFallbackText}>
-                    {user?.userName?.charAt(0)?.toUpperCase() ?? 'P'}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
+          {!showBack && (
+            <View style={styles.rightSection}>
+              <TouchableOpacity onPress={onSearchPress} style={styles.iconButton}>
+                <Ionicons name="search-outline" size={24} color={colors.text.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
+                <Ionicons name="notifications-outline" size={24} color={colors.text.primary} />
+                {hasUnread && (
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount && unreadCount > 9 ? '9+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsProfileMenuVisible(true)} style={styles.iconButton}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarFallbackText}>
+                      {user?.userName?.charAt(0)?.toUpperCase() ?? 'P'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
 

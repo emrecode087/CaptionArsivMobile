@@ -45,6 +45,7 @@ export const CategoryPostsScreen = memo(() => {
     categoryId,
     includePrivate: false,
     includeDeleted: false,
+    feedType: activeTab === 'hot' ? 'Popular' : activeTab === 'fresh' ? 'New' : undefined,
   });
   const fallbackThumbnail =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAucB9p7Yi4sAAAAASUVORK5CYII=';
@@ -70,17 +71,9 @@ export const CategoryPostsScreen = memo(() => {
 
   const sortedPosts = useMemo(() => {
     if (!posts) return [];
-    if (activeTab === 'fresh') {
-      return [...posts].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-    }
-    // hot: likeCount desc then newest
-    return [...posts].sort((a, b) => {
-      if (b.likeCount !== a.likeCount) return b.likeCount - a.likeCount;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }, [activeTab, posts]);
+    // Backend handles sorting now via feedType
+    return posts;
+  }, [posts]);
 
   const styles = useMemo(
     () =>

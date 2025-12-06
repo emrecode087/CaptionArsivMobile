@@ -908,9 +908,13 @@ export const PostCard = memo(({ post, isDetailView = false }: PostCardProps) => 
         {post.tags?.length ? (
           <View style={styles.tagsContainer}>
             {post.tags.map((tag, index) => (
-              <View key={index} style={styles.tag}>
+              <TouchableOpacity 
+                key={index} 
+                style={styles.tag}
+                onPress={() => navigation.push('TagPosts', { tag })}
+              >
                 <Text style={styles.tagText}>{tag}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : null}

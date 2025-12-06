@@ -15,12 +15,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { spacing, typography } from '@/core/theme/tokens';
+import { spacing, typography, borderRadius } from '@/core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
 import { useInfiniteSearchPosts } from '@/features/posts/data/usePostsQuery';
+import { usePublicCollectionsQuery } from '@/features/collections/data/useCollectionsQuery';
+import { useCategoriesQuery } from '@/features/categories/data/useCategoriesQuery';
 import { PostCard } from '@/features/posts/ui/PostCard';
+import { CollectionCard } from '@/features/collections/ui/CollectionCard';
 
 const PAGE_SIZE = 20;
+
+type SearchTab = 'posts' | 'collections' | 'categories';
 
 export const SearchPostsScreen = () => {
   const navigation = useNavigation<any>();
@@ -29,10 +34,11 @@ export const SearchPostsScreen = () => {
 
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<SearchTab>('posts');
   const shouldSearch = debouncedSearch.length > 0;
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
+    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim().toLocaleLowerCase('tr-TR')), 350);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
@@ -74,12 +80,29 @@ export const SearchPostsScreen = () => {
           color: colors.text.primary,
           paddingVertical: 0,
         },
-        hint: {
-          ...typography.caption,
+        tabsContainer: {
+          flexDirection: 'row',
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        },
+        tab: {
+          flex: 1,
+          alignItems: 'center',
+          paddingVertical: spacing.md,
+          borderBottomWidth: 2,
+          borderBottomColor: 'transparent',
+        },
+        activeTab: {
+          borderBottomColor: colors.primary,
+        },
+        tabText: {
+          ...typography.body,
           color: colors.text.secondary,
-          marginTop: spacing.xs,
-          paddingHorizontal: spacing.md,
-          paddingBottom: spacing.sm,
+          fontWeight: '500',
+        },
+        activeTabText: {
+          color: colors.primary,
+          fontWeight: '600',
         },
         listContent: {
           paddingBottom: spacing.xl,
@@ -96,49 +119,210 @@ export const SearchPostsScreen = () => {
           textAlign: 'center',
           marginTop: spacing.sm,
         },
+        hint: {
+          ...typography.caption,
+          color: colors.text.secondary,
+          marginTop: spacing.xs,
+        },
         loadingMore: {
           paddingVertical: spacing.md,
+        },
+        categoryCard: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: spacing.md,
+          backgroundColor: colors.surface,
+          marginBottom: 1,
+        },
+        categoryName: {
+          ...typography.body,
+          color: colors.text.primary,
+          flex: 1,
         },
       }),
     [colors, insets.top],
   );
 
-  const {
-    data,
-    isLoading,
-    isFetchingNextPage,
-    fetchNextPage,
-    hasNextPage,
-    refetch,
-    isRefetching,
-  } = useInfiniteSearchPosts(
+  // Posts Query
+  const postsQuery = useInfiniteSearchPosts(
     {
       q: shouldSearch ? debouncedSearch : '',
       pageSize: PAGE_SIZE,
     },
     {
       staleTime: 0,
-      enabled: shouldSearch,
-    },
+      enabled: shouldSearch && activeTab === 'posts',
+    }
   );
 
-  const posts = shouldSearch ? data?.pages.flat() ?? [] : [];
-  const isInitialLoading = shouldSearch && isLoading && posts.length === 0;
-  const isEmpty = shouldSearch && !isInitialLoading && posts.length === 0;
+  // Collections Query
+  const collectionsQuery = usePublicCollectionsQuery(
+    { search: shouldSearch ? debouncedSearch : '' },
+    { enabled: shouldSearch && activeTab === 'collections' }
+  );
 
-  const handleEndReached = () => {
-    if (shouldSearch && hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
+  // Categories Query
+  const categoriesQuery = useCategoriesQuery(
+    { search: shouldSearch ? debouncedSearch : '' },
+    { enabled: shouldSearch && activeTab === 'categories' }
+  );
+
+  const renderTab = (tab: SearchTab, label: string) => (
+    <TouchableOpacity
+      style={[styles.tab, activeTab === tab && styles.activeTab]}
+      onPress={() => setActiveTab(tab)}
+    >
+      <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{label}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderContent = () => {
+    if (!shouldSearch) {
+      return (
+        <View style={styles.emptyContent}>
+          <Ionicons name="search" size={64} color={colors.text.tertiary} />
+          <Text style={styles.emptyText}>Aramak istediğiniz kelimeyi yazın</Text>
+        </View>
+      );
     }
-  };
 
-  const renderFooter = () => {
-    if (!shouldSearch || !isFetchingNextPage) return null;
-    return (
-      <View style={styles.loadingMore}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    if (activeTab === 'posts') {
+      const posts = postsQuery.data?.pages.flat() ?? [];
+      const isInitialLoading = postsQuery.isLoading && posts.length === 0;
+      const isEmpty = !isInitialLoading && posts.length === 0;
+
+      if (isInitialLoading) {
+        return (
+          <View style={styles.emptyContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        );
+      }
+
+      if (postsQuery.isError) {
+        return (
+          <View style={styles.emptyContent}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+            <Text style={styles.emptyText}>Bir hata oluştu</Text>
+            <TouchableOpacity onPress={() => postsQuery.refetch()} style={{ marginTop: spacing.md }}>
+              <Text style={{ color: colors.primary, ...typography.button }}>Tekrar Dene</Text>
+            </TouchableOpacity>
+          </View>
+        );
+      }
+
+      return (
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <PostCard post={item} />}
+          contentContainerStyle={isEmpty ? styles.emptyContent : styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContent}>
+              <Ionicons name="search-outline" size={48} color={colors.text.tertiary} />
+              <Text style={styles.emptyText}>Aramana uygun gönderi bulunamadı.</Text>
+            </View>
+          }
+          ListFooterComponent={
+            postsQuery.isFetchingNextPage ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : null
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={postsQuery.isRefetching}
+              onRefresh={postsQuery.refetch}
+              tintColor={colors.primary}
+            />
+          }
+          onEndReached={() => {
+            if (postsQuery.hasNextPage && !postsQuery.isFetchingNextPage) {
+              postsQuery.fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.6}
+          keyboardShouldPersistTaps="handled"
+        />
+      );
+    }
+
+    if (activeTab === 'collections') {
+      const collections = collectionsQuery.data?.data ?? [];
+      const isLoading = collectionsQuery.isLoading;
+      const isEmpty = !isLoading && collections.length === 0;
+
+      if (isLoading) {
+        return (
+          <View style={styles.emptyContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        );
+      }
+
+      return (
+        <FlatList
+          data={collections}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <CollectionCard 
+              collection={item} 
+              onPress={() => navigation.navigate('CollectionDetail', { id: item.id })} 
+            />
+          )}
+          contentContainerStyle={isEmpty ? styles.emptyContent : styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContent}>
+              <Ionicons name="albums-outline" size={48} color={colors.text.tertiary} />
+              <Text style={styles.emptyText}>Aramana uygun koleksiyon bulunamadı.</Text>
+            </View>
+          }
+          keyboardShouldPersistTaps="handled"
+        />
+      );
+    }
+
+    if (activeTab === 'categories') {
+      const categories = categoriesQuery.data ?? [];
+      const isLoading = categoriesQuery.isLoading;
+      const isEmpty = !isLoading && categories.length === 0;
+
+      if (isLoading) {
+        return (
+          <View style={styles.emptyContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        );
+      }
+
+      return (
+        <FlatList
+          data={categories}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={styles.categoryCard}
+              onPress={() => navigation.navigate('CategoryPosts', { categoryId: item.id, categoryName: item.name })}
+            >
+              <Ionicons name="folder-outline" size={24} color={colors.primary} style={{ marginRight: spacing.md }} />
+              <Text style={styles.categoryName}>{item.name}</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={isEmpty ? styles.emptyContent : styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContent}>
+              <Ionicons name="folder-open-outline" size={48} color={colors.text.tertiary} />
+              <Text style={styles.emptyText}>Aramana uygun kategori bulunamadı.</Text>
+            </View>
+          }
+          keyboardShouldPersistTaps="handled"
+        />
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -154,7 +338,7 @@ export const SearchPostsScreen = () => {
             <TextInput
               value={searchInput}
               onChangeText={setSearchInput}
-              placeholder={'Ara, "tam ifade" ya da -haric'}
+              placeholder={'Ara'}
               placeholderTextColor={colors.text.secondary}
               autoCorrect={false}
               autoCapitalize="none"
@@ -172,42 +356,15 @@ export const SearchPostsScreen = () => {
             )}
           </View>
         </View>
-        <Text style={styles.hint}>{'Kelime, "tam ifade" ve -cikarma desteklenir.'}</Text>
+        
+        <View style={styles.tabsContainer}>
+          {renderTab('posts', 'Gönderiler')}
+          {renderTab('collections', 'Koleksiyonlar')}
+          {renderTab('categories', 'Kategoriler')}
+        </View>
       </View>
 
-      {!shouldSearch ? (
-        <View style={styles.emptyContent} />
-      ) : isInitialLoading ? (
-        <View style={styles.emptyContent}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={posts}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PostCard post={item} />}
-          contentContainerStyle={posts.length === 0 ? styles.emptyContent : styles.listContent}
-          ListEmptyComponent={
-            isEmpty ? (
-              <View style={styles.emptyContent}>
-                <Ionicons name="search-outline" size={48} color={colors.text.tertiary} />
-                <Text style={styles.emptyText}>Aramana uygun gonderi bulunamadi.</Text>
-              </View>
-            ) : null
-          }
-          ListFooterComponent={renderFooter}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={colors.primary}
-            />
-          }
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.6}
-          keyboardShouldPersistTaps="handled"
-        />
-      )}
+      {renderContent()}
     </View>
   );
 };

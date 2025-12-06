@@ -16,9 +16,11 @@ export interface Post {
   createdAt: string;
   updatedAt?: string | null;
   tags: string[];
+  categories?: string[];
   likeCount: number;
   commentCount: number;
   isLikedByCurrentUser: boolean;
+  userProfileImage?: string | null;
 }
 
 export interface PostsListParams {
@@ -31,6 +33,8 @@ export interface PostsListParams {
   includeDeleted?: boolean;
   page?: number;
   pageSize?: number;
+  feedType?: 'Home' | 'Popular' | 'New';
+  onlyFollowedTags?: boolean;
 }
 
 export interface SearchPostsParams {

@@ -110,9 +110,6 @@ export const Sidebar = () => {
       color: colors.text.primary,
       fontWeight: '500',
     },
-    manageItem: {
-      backgroundColor: colors.primary + '10', // 10% opacity
-    },
     manageText: {
       color: colors.primary,
       fontWeight: '600',
@@ -185,7 +182,7 @@ export const Sidebar = () => {
             <>
               <Text style={styles.sectionTitle}>Menü</Text>
               <TouchableOpacity
-                style={[styles.item, styles.manageItem]}
+                style={styles.item}
                 onPress={() => {
                   handleClose();
                   navigate('CategoriesManagement');
@@ -196,9 +193,21 @@ export const Sidebar = () => {
                 </View>
                 <Text style={[styles.itemText, styles.manageText]}>Kategorileri Yönet</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => {
+                  handleClose();
+                  navigate('Tags');
+                }}
+              >
+                <View style={styles.itemIcon}>
+                  <Ionicons name="pricetags-outline" size={20} color={colors.primary} />
+                </View>
+                <Text style={[styles.itemText, styles.manageText]}>Tagları Yönet</Text>
+              </TouchableOpacity>
             </>
           )}
-
           <Text style={[styles.sectionTitle, { marginTop: canManageCategories ? spacing.lg : 0 }]}>Kategoriler</Text>
 
           {categories?.map((category) => {

@@ -15,6 +15,8 @@ import { LikedPostsScreen } from '@/features/posts/screens/LikedPostsScreen';
 import { BlockUsersScreen } from '@/features/blocks/screens/BlockUsersScreen';
 import { BlockTagsScreen } from '@/features/blocks/screens/BlockTagsScreen';
 import { BlockCategoriesScreen } from '@/features/blocks/screens/BlockCategoriesScreen';
+import { TagsScreen } from '@/features/tags/screens/TagsScreen';
+import { TagPostsScreen } from '@/features/tags/screens/TagPostsScreen';
 
 const Stack = createStackNavigator();
 
@@ -96,6 +98,8 @@ export const MainNavigator = memo(() => {
             headerShown: false,
           }}
         />
+        <Stack.Screen name="Tags" component={TagsScreen} />
+        <Stack.Screen name="TagPosts" component={TagPostsScreen} />
         <Stack.Screen 
           name="CollectionDetail" 
           component={CollectionDetailScreen}

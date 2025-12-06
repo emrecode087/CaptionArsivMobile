@@ -4,7 +4,7 @@ import { ApiError } from '@/core/types/api';
 import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 
 import type { Post, PostsListParams, SearchPostsParams, CreatePostRequest, Comment } from '../domain/types';
-import { fetchPosts, fetchSearchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment, fetchFollowedCategoryPosts, fetchLikedPosts } from './postsApi';
+import { fetchPosts, fetchSearchPosts, getPostById, createPost, likePost, unlikePost, fetchComments, createComment, deleteComment, fetchLikedPosts } from './postsApi';
 
 export const postsQueryKeys = {
   all: ['posts'] as const,
@@ -13,7 +13,6 @@ export const postsQueryKeys = {
   search: (params: SearchPostsParams) => [...postsQueryKeys.all, 'search', params] as const,
   liked: (userId?: string, includePrivate?: boolean, includeDeleted?: boolean) =>
     [...postsQueryKeys.all, 'liked', userId ?? 'me', includePrivate ?? true, includeDeleted ?? false] as const,
-  followed: () => [...postsQueryKeys.all, 'followed'] as const,
   detail: (id: string) => [...postsQueryKeys.all, 'detail', id] as const,
   comments: (postId: string) => [...postsQueryKeys.detail(postId), 'comments'] as const,
 };
@@ -163,15 +162,6 @@ export const useDeleteCommentMutation = () => {
     },
   });
 };
-
-export const useFollowedCategoryPostsQuery = (
-  options?: Omit<UseQueryOptions<Post[], ApiError, Post[], ReturnType<typeof postsQueryKeys.followed>>, 'queryKey' | 'queryFn'>,
-) =>
-  useQuery({
-    queryKey: postsQueryKeys.followed(),
-    queryFn: fetchFollowedCategoryPosts,
-    ...options,
-  });
 
 export const useInfinitePostsQuery = (
   params?: PostsListParams,

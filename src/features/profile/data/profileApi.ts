@@ -48,6 +48,30 @@ export const profileApi = {
     return parseUserResponse(response, 'Sifre guncellenemedi');
   },
 
+  followUser: async (userId: string) => {
+    const response = await apiClient.post<ApiResult<string>>(`/Users/${userId}/follow`);
+    const payload = response.data;
+    if (!payload.isSuccess) {
+      throw new ApiError(payload.message ?? 'Kullanıcı takip edilemedi', {
+        status: response.status,
+        errors: payload.errors ?? null,
+      });
+    }
+    return payload.data;
+  },
+
+  unfollowUser: async (userId: string) => {
+    const response = await apiClient.post<ApiResult<string>>(`/Users/${userId}/unfollow`);
+    const payload = response.data;
+    if (!payload.isSuccess) {
+      throw new ApiError(payload.message ?? 'Kullanıcı takipten çıkarılamadı', {
+        status: response.status,
+        errors: payload.errors ?? null,
+      });
+    }
+    return payload.data;
+  },
+
   sendFeedback: async (data: { message: string; contact: string }) => {
     const response = await apiClient.post<ApiResult<string>>('/Feedback', data);
     

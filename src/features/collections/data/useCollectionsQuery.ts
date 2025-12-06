@@ -2,10 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { collectionsApi } from './collectionsApi';
 import { CreateCollectionRequest, UpdateCollectionRequest, AddPostToCollectionRequest, Collection } from '../domain/types';
 
-export const usePublicCollectionsQuery = (params?: { search?: string; ownerId?: string; includePosts?: boolean }) => {
+export const usePublicCollectionsQuery = (
+  params?: { search?: string; ownerId?: string; includePosts?: boolean },
+  options?: { enabled?: boolean }
+) => {
   return useQuery({
     queryKey: ['collections', 'public', params],
     queryFn: () => collectionsApi.getPublicCollections(params),
+    enabled: options?.enabled,
   });
 };
 

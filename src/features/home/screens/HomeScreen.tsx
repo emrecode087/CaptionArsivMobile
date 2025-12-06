@@ -1,11 +1,14 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, RefreshControl, Animated, StyleProp, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 
 import { spacing, typography } from '@/core/theme/tokens';
 import { useTheme } from '@/core/theme/useTheme';
 import { usePostsQuery } from '@/features/posts/data/usePostsQuery';
+import { useAuthStore } from '@/features/auth/stores/useAuthStore';
 import { PostCard } from '@/features/posts/ui/PostCard';
+import { HomeTags } from '@/features/tags/ui/HomeTags';
 
 interface HomeScreenProps {
   filter?: 'forYou' | 'top' | 'fresh';
@@ -16,6 +19,8 @@ interface HomeScreenProps {
 export const HomeScreen = memo(({ filter = 'forYou', onScroll, contentContainerStyle }: HomeScreenProps) => {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const navigation = useNavigation<any>();
+  const { isAuthenticated } = useAuthStore();
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -48,25 +53,37 @@ export const HomeScreen = memo(({ filter = 'forYou', onScroll, contentContainerS
     },
   }), [colors]);
 
-  // TODO: Implement actual sorting in API based on filter
-  const { data: allPosts, isLoading: isLoadingAll, refetch: refetchAll } = usePostsQuery({
+  // Determine feed type and filters
+  const feedType = filter === 'top' ? 'Popular' : filter === 'fresh' ? 'New' : 'Home';
+  const onlyFollowedTags = filter === 'forYou' && isAuthenticated;
+
+  const { data: posts, isLoading, refetch } = usePostsQuery({
+    feedType,
+    onlyFollowedTags,
     includePrivate: false,
     includeDeleted: false,
-    // sortBy: filter === 'top' ? 'likes' : filter === 'fresh' ? 'date' : undefined
   });
-
-  const posts = allPosts;
-  const isLoading = isLoadingAll;
-  const refetch = refetchAll;
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyEmoji}>😴</Text>
       <Text style={styles.emptyTitle}>Henüz bir şey yok</Text>
       <Text style={styles.emptyText}>
-        Bu akışta henüz gönderi bulunmuyor.
+        {isAuthenticated 
+          ? 'Takip ettiğiniz kategori veya etiketlerden henüz gönderi yok. Keşfetmeye başlayın!' 
+          : 'Bu akışta henüz gönderi bulunmuyor.'}
       </Text>
     </View>
+  );
+
+  const handleTagPress = (tag: string | null) => {
+    if (tag) {
+      navigation.navigate('TagPosts', { tag });
+    }
+  };
+
+  const renderHeader = () => (
+    <HomeTags selectedTagId={null} onSelectTag={handleTagPress} />
   );
 
   return (
@@ -79,6 +96,7 @@ export const HomeScreen = memo(({ filter = 'forYou', onScroll, contentContainerS
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />
         }
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={!isLoading ? renderEmpty : null}
         onScroll={onScroll}
         scrollEventThrottle={16}
